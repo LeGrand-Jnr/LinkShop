@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkShop - Store</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe',
+              300: '#a5b4fc', 400: '#818cf8', 500: '#6366f1',
+              600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="min-h-screen bg-slate-50">
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-brand-600 rounded-xl flex items-center justify-center">
+          <i data-lucide="shopping-bag" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <h1 id="store-header-name" class="font-bold text-slate-800 text-lg leading-tight">Loading...</h1>
+          <p class="text-xs text-slate-400">LinkShop Store</p>
+        </div>
+      </div>
+      <button onclick="window.location.href='cart.html'" class="relative p-2 rounded-xl hover:bg-slate-100 transition-colors">
+        <i data-lucide="shopping-cart" class="w-6 h-6 text-slate-600"></i>
+        <span id="cart-badge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-brand-600 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Search Bar -->
+  <div class="max-w-6xl mx-auto px-4 py-4">
+    <div class="relative max-w-md">
+      <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+      <input type="text" id="store-search" placeholder="Search products..."
+        class="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+        oninput="handleStoreSearch(this.value)">
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div id="store-loading" class="flex items-center justify-center py-20">
+    <div class="text-center">
+      <div class="spinner spinner-dark w-8 h-8 mx-auto mb-4" style="border-width:4px;width:2rem;height:2rem;"></div>
+      <p class="text-slate-500 text-sm">Loading store...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div id="store-error" class="hidden max-w-md mx-auto text-center py-20 px-4">
+    <div class="w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+      <i data-lucide="store" class="w-10 h-10 text-red-300"></i>
+    </div>
+    <h2 class="text-xl font-bold text-slate-800 mb-2">Store Not Found</h2>
+    <p class="text-slate-500 text-sm mb-4" id="error-message">The store you're looking for doesn't exist or has been removed.</p>
+    <a href="index.html" class="inline-block bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2 px-6 rounded-xl text-sm transition-all">
+      Go Home
+    </a>
+  </div>
+
+  <!-- Products Grid -->
+  <div id="store-products" class="hidden max-w-6xl mx-auto px-4 pb-8">
+    <div id="products-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <!-- Products rendered here -->
+    </div>
+
+    <div id="no-products-store" class="hidden text-center py-16">
+      <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="package" class="w-8 h-8 text-slate-300"></i>
+      </div>
+      <h3 class="font-semibold text-slate-600 mb-1">No products available</h3>
+      <p class="text-sm text-slate-400">Check back later for new items</p>
+    </div>
+  </div>
+
+  <!-- Floating Cart Button (Mobile) -->
+  <button id="floating-cart" class="hidden fixed bottom-6 right-6 bg-brand-600 hover:bg-brand-700 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center z-30 transition-all"
+    onclick="window.location.href='cart.html'">
+    <i data-lucide="shopping-cart" class="w-6 h-6"></i>
+    <span id="floating-cart-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-white text-brand-600 text-xs font-bold rounded-full flex items-center justify-center">0</span>
+  </button>
+
+  <!-- Firebase SDK - Commented out for localhost development -->
+  <!-- <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script> -->
+
+  <!-- App Scripts -->
+  <script src="firebase.js"></script>
+  <script src="products.js"></script>
+  <script src="store.js"></script>
+  <script src="cart.js"></script>
+
+  <script>
+    let storeSlug = '';
+    let storeOwner = '';
+    let storeProducts = [];
+
+    // Initialize store page
+    async function initStore() {
+      const params = new URLSearchParams(window.location.search);
+      storeSlug = params.get('shop');
+
+      if (!storeSlug) {
+        showError('No store specified. Please check the link and try again.');
+        return;
+      }
+
+      const result = await getProductsBySlug(storeSlug);
+
+      if (!result.success) {
+        showError(result.error);
+        return;
+      }
+
+      // Store found!
+      storeOwner = result.userId;
+      storeProducts = result.products;
+      document.title = `${result.storeInfo.store_name} - LinkShop`;
+      document.getElementById('store-header-name').textContent = result.storeInfo.store_name;
+
+      document.getElementById('store-loading').classList.add('hidden');
+      document.getElementById('store-products').classList.remove('hidden');
+
+      renderStoreProducts(storeProducts);
+      updateCartBadge();
+
+      lucide.createIcons();
+    }
+
+    function renderStoreProducts(products) {
+      const grid = document.getElementById('products-grid');
+      const noProducts = document.getElementById('no-products-store');
+
+      if (products.length === 0) {
+        grid.innerHTML = '';
+        noProducts.classList.remove('hidden');
+        return;
+      }
+
+      noProducts.classList.add('hidden');
+      grid.innerHTML = products.map(p => {
+        // Handle multiple images - show first image or placeholder
+        const mediaUrls = p.media_urls || (p.media_url ? [p.media_url] : []);
+        const firstImage = mediaUrls.length > 0 ? mediaUrls[0] : null;
+
+        const mediaEl = firstImage
+          ? (isVideoUrl(firstImage)
+            ? `<div class="media-preview aspect-square"><video src="${firstImage}" class="w-full h-full" muted loop onmouseover="this.play()" onmouseout="this.pause()"></video></div>`
+            : `<div class="media-preview aspect-square"><img src="${firstImage}" alt="${p.name}" class="w-full h-full object-cover" loading="lazy"></div>`)
+          : `<div class="aspect-square bg-slate-100 flex items-center justify-center rounded-xl"><i data-lucide="image" class="w-10 h-10 text-slate-200"></i></div>`;
+
+        return `
+          <div class="product-card bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            ${mediaEl}
+            <div class="p-3 sm:p-4">
+              <h3 class="font-semibold text-slate-800 text-sm mb-1 truncate">${p.name}</h3>
+              ${p.description ? `<p class="text-xs text-slate-400 mb-2 line-clamp-2">${p.description}</p>` : ''}
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-base sm:text-lg font-bold text-brand-600">${formatCurrency(p.price)}</span>
+                <span class="text-xs text-slate-400">${p.stock} left</span>
+              </div>
+              <button onclick="handleAddToCart('${p.id}')"
+                class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5">
+                <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i>
+                Add to Cart
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function handleAddToCart(productId) {
+      const product = storeProducts.find(p => p.id === productId);
+      if (!product) return;
+
+      const result = addToCart(product, storeSlug, storeOwner);
+      if (result.success) {
+        showToast(`${product.name} added to cart!`, 'success');
+        updateCartBadge();
+      } else if (result.error === 'Cancelled by user') {
+        // User cancelled
+      } else {
+        showToast(result.error, 'error');
+      }
+    }
+
+    function updateCartBadge() {
+      const count = getCartCount();
+      const badge = document.getElementById('cart-badge');
+      const floatingBadge = document.getElementById('floating-cart-badge');
+      const floatingCart = document.getElementById('floating-cart');
+
+      if (count > 0) {
+        badge.textContent = count;
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+        floatingBadge.textContent = count;
+        floatingCart.classList.remove('hidden');
+        floatingCart.classList.add('flex');
+      } else {
+        badge.classList.add('hidden');
+        badge.classList.remove('flex');
+        floatingCart.classList.add('hidden');
+        floatingCart.classList.remove('flex');
+      }
+    }
+
+    function handleStoreSearch(term) {
+      const filtered = filterProducts(storeProducts, term);
+      renderStoreProducts(filtered);
+    }
+
+    function showError(message) {
+      document.getElementById('store-loading').classList.add('hidden');
+      document.getElementById('store-error').classList.remove('hidden');
+      document.getElementById('error-message').textContent = message;
+      lucide.createIcons();
+    }
+
+    // Initialize
+    initStore();
+  </script>
+</body>
+</html>

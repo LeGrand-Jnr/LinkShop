@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkShop - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe',
+              300: '#a5b4fc', 400: '#818cf8', 500: '#6366f1',
+              600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="min-h-screen bg-slate-50">
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Mobile Top Bar -->
+  <header class="lg:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
+        <i data-lucide="shopping-bag" class="w-4 h-4 text-white"></i>
+      </div>
+      <span class="font-bold text-slate-800">LinkShop</span>
+    </div>
+    <button onclick="toggleMobileMenu()" class="p-2 rounded-lg hover:bg-slate-100">
+      <i data-lucide="menu" class="w-5 h-5 text-slate-600"></i>
+    </button>
+  </header>
+
+  <div class="flex">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed lg:sticky top-0 left-0 h-screen w-64 bg-slate-900 text-white transform -translate-x-full lg:translate-x-0 transition-transform z-50 flex flex-col">
+      <div class="p-5 flex items-center gap-3 border-b border-slate-800">
+        <div class="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center">
+          <i data-lucide="shopping-bag" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <div class="font-bold text-white">LinkShop</div>
+          <div class="text-xs text-slate-400" id="sidebar-store-name">Loading...</div>
+        </div>
+      </div>
+
+      <nav class="flex-1 py-4 overflow-y-auto">
+        <button onclick="switchSection('store')" class="sidebar-link active w-full flex items-center gap-3 px-5 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-all" data-section="store">
+          <i data-lucide="store" class="w-4 h-4"></i>
+          <span>Store Settings</span>
+        </button>
+        <button onclick="switchSection('products')" class="sidebar-link w-full flex items-center gap-3 px-5 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-all" data-section="products">
+          <i data-lucide="package" class="w-4 h-4"></i>
+          <span>Products</span>
+        </button>
+        <button onclick="switchSection('orders')" class="sidebar-link w-full flex items-center gap-3 px-5 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-all" data-section="orders">
+          <i data-lucide="receipt" class="w-4 h-4"></i>
+          <span>Orders</span>
+        </button>
+        <button onclick="switchSection('analytics')" class="sidebar-link w-full flex items-center gap-3 px-5 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-all" data-section="analytics">
+          <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+          <span>Analytics</span>
+        </button>
+      </nav>
+
+      <div class="p-4 border-t border-slate-800">
+        <button onclick="logout()" class="w-full flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+          <span>Logout</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="toggleMobileMenu()"></div>
+
+    <!-- Main Content -->
+    <main class="flex-1 min-h-screen lg:min-h-[calc(100vh)] overflow-y-auto">
+      <!-- Loading State -->
+      <div id="loading-state" class="flex items-center justify-center min-h-[60vh]">
+        <div class="text-center">
+          <div class="spinner spinner-dark w-8 h-8 mx-auto mb-4" style="border-width:4px;width:2rem;height:2rem;"></div>
+          <p class="text-slate-500 text-sm">Loading dashboard...</p>
+        </div>
+      </div>
+
+      <!-- ===== STORE SETTINGS SECTION ===== -->
+      <section id="section-store" class="hidden p-4 sm:p-6 lg:p-8 max-w-4xl">
+        <div class="mb-6">
+          <h1 class="text-2xl font-bold text-slate-800">Store Settings</h1>
+          <p class="text-slate-500 text-sm mt-1">Manage your store details and sharing options</p>
+        </div>
+
+        <!-- Store Info Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+          <h2 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <i data-lucide="info" class="w-4 h-4 text-brand-500"></i>
+            Store Information
+          </h2>
+          <form id="store-info-form" onsubmit="handleUpdateStore(event)">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">Store Name</label>
+                <input type="text" id="edit-store-name" required
+                  class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">Store URL Slug</label>
+                <input type="text" id="edit-store-slug" required pattern="[a-z0-9-]+"
+                  class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+              </div>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">WhatsApp Number</label>
+              <input type="tel" id="edit-whatsapp"
+                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                placeholder="+1 234 567 8900">
+            </div>
+            <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2 px-6 rounded-xl text-sm transition-all">
+              Save Changes
+            </button>
+          </form>
+        </div>
+
+        <!-- Share Store Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+          <h2 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <i data-lucide="share-2" class="w-4 h-4 text-brand-500"></i>
+            Share Your Store
+          </h2>
+          <div class="flex flex-col sm:flex-row gap-6 items-start">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">Store Link</label>
+              <div class="flex items-center gap-2">
+                <input type="text" id="store-link" readonly
+                  class="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 text-slate-600">
+                <button onclick="copyStoreLink()" class="px-4 py-2.5 bg-brand-50 text-brand-600 rounded-xl text-sm font-medium hover:bg-brand-100 transition-colors">
+                  <i data-lucide="copy" class="w-4 h-4"></i>
+                </button>
+              </div>
+              <p class="text-xs text-slate-400 mt-2">Share this link with your customers</p>
+            </div>
+            <div class="text-center">
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">QR Code</label>
+              <div class="bg-white border border-slate-200 rounded-xl p-3 inline-block">
+                <img id="qr-code" src="" alt="QR Code" class="w-32 h-32">
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Scan to open store</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inventory Alerts -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6">
+          <h2 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-500"></i>
+            Inventory Alerts
+          </h2>
+          <div id="inventory-alerts" class="space-y-3">
+            <p class="text-sm text-slate-400">Loading alerts...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== PRODUCTS SECTION ===== -->
+      <section id="section-products" class="hidden p-4 sm:p-6 lg:p-8">
+        <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-bold text-slate-800">Products</h1>
+            <p class="text-slate-500 text-sm mt-1">Manage your product catalog</p>
+          </div>
+          <button onclick="showAddProductModal()" class="bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2 px-5 rounded-xl text-sm transition-all flex items-center gap-2 w-fit">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Add Product
+          </button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="mb-6">
+          <div class="relative max-w-md">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+            <input type="text" id="product-search" placeholder="Search products..."
+              class="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              oninput="handleProductSearch(this.value)">
+          </div>
+        </div>
+
+        <!-- Products Grid -->
+        <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <!-- Products will be rendered here -->
+        </div>
+
+        <div id="no-products" class="hidden text-center py-16">
+          <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <i data-lucide="package" class="w-8 h-8 text-slate-300"></i>
+          </div>
+          <h3 class="font-semibold text-slate-600 mb-1">No products yet</h3>
+          <p class="text-sm text-slate-400 mb-4">Add your first product to get started</p>
+          <button onclick="showAddProductModal()" class="bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2 px-5 rounded-xl text-sm transition-all">
+            Add Product
+          </button>
+        </div>
+      </section>
+
+      <!-- ===== ORDERS SECTION ===== -->
+      <section id="section-orders" class="hidden p-4 sm:p-6 lg:p-8">
+        <div class="mb-6">
+          <h1 class="text-2xl font-bold text-slate-800">Orders</h1>
+          <p class="text-slate-500 text-sm mt-1">View and manage customer orders</p>
+        </div>
+
+        <!-- Order Filters -->
+        <div class="flex gap-2 mb-6 flex-wrap">
+          <button onclick="filterOrders('all')" class="order-filter active px-4 py-2 rounded-xl text-sm font-medium bg-brand-600 text-white transition-all" data-filter="all">
+            All
+          </button>
+          <button onclick="filterOrders('pending')" class="order-filter px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all" data-filter="pending">
+            Pending
+          </button>
+          <button onclick="filterOrders('completed')" class="order-filter px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all" data-filter="completed">
+            Completed
+          </button>
+          <button onclick="filterOrders('cancelled')" class="order-filter px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all" data-filter="cancelled">
+            Cancelled
+          </button>
+        </div>
+
+        <!-- Orders List -->
+        <div id="orders-list" class="space-y-4">
+          <!-- Orders rendered here -->
+        </div>
+
+        <div id="no-orders" class="hidden text-center py-16">
+          <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <i data-lucide="receipt" class="w-8 h-8 text-slate-300"></i>
+          </div>
+          <h3 class="font-semibold text-slate-600 mb-1">No orders yet</h3>
+          <p class="text-sm text-slate-400">Orders will appear here when customers purchase</p>
+        </div>
+      </section>
+
+      <!-- ===== ANALYTICS SECTION ===== -->
+      <section id="section-analytics" class="hidden p-4 sm:p-6 lg:p-8">
+        <div class="mb-6">
+          <h1 class="text-2xl font-bold text-slate-800">Analytics</h1>
+          <p class="text-slate-500 text-sm mt-1">Overview of your store performance</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" id="stats-cards">
+          <div class="bg-white rounded-2xl border border-slate-200 p-5">
+            <div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mb-3">
+              <i data-lucide="dollar-sign" class="w-5 h-5 text-emerald-600"></i>
+            </div>
+            <div class="text-2xl font-bold text-slate-800" id="stat-revenue">$0</div>
+            <div class="text-xs text-slate-500 mt-1">Total Revenue</div>
+          </div>
+          <div class="bg-white rounded-2xl border border-slate-200 p-5">
+            <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-3">
+              <i data-lucide="receipt" class="w-5 h-5 text-blue-600"></i>
+            </div>
+            <div class="text-2xl font-bold text-slate-800" id="stat-orders">0</div>
+            <div class="text-xs text-slate-500 mt-1">Total Orders</div>
+          </div>
+          <div class="bg-white rounded-2xl border border-slate-200 p-5">
+            <div class="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center mb-3">
+              <i data-lucide="package" class="w-5 h-5 text-violet-600"></i>
+            </div>
+            <div class="text-2xl font-bold text-slate-800" id="stat-products">0</div>
+            <div class="text-xs text-slate-500 mt-1">Products</div>
+          </div>
+          <div class="bg-white rounded-2xl border border-slate-200 p-5">
+            <div class="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center mb-3">
+              <i data-lucide="trending-up" class="w-5 h-5 text-amber-600"></i>
+            </div>
+            <div class="text-2xl font-bold text-slate-800" id="stat-profit">$0</div>
+            <div class="text-xs text-slate-500 mt-1">Total Profit</div>
+          </div>
+        </div>
+
+        <!-- Order Status Breakdown -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
+            <div class="text-3xl font-bold text-amber-700" id="stat-pending">0</div>
+            <div class="text-sm text-amber-600 mt-1">Pending Orders</div>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
+            <div class="text-3xl font-bold text-emerald-700" id="stat-completed">0</div>
+            <div class="text-sm text-emerald-600 mt-1">Completed Orders</div>
+          </div>
+          <div class="bg-red-50 border border-red-200 rounded-2xl p-5 text-center">
+            <div class="text-3xl font-bold text-red-700" id="stat-cancelled">0</div>
+            <div class="text-sm text-red-600 mt-1">Cancelled Orders</div>
+          </div>
+        </div>
+
+        <!-- Inventory Status -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6">
+          <h2 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <i data-lucide="alert-circle" class="w-4 h-4 text-brand-500"></i>
+            Inventory Status
+          </h2>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div class="text-center p-4 bg-slate-50 rounded-xl">
+              <div class="text-2xl font-bold text-slate-800" id="stat-total-products">0</div>
+              <div class="text-xs text-slate-500 mt-1">Total Products</div>
+            </div>
+            <div class="text-center p-4 bg-amber-50 rounded-xl">
+              <div class="text-2xl font-bold text-amber-600" id="stat-low-stock">0</div>
+              <div class="text-xs text-amber-600 mt-1">Low Stock (&lt;5)</div>
+            </div>
+            <div class="text-center p-4 bg-red-50 rounded-xl">
+              <div class="text-2xl font-bold text-red-600" id="stat-out-stock">0</div>
+              <div class="text-xs text-red-600 mt-1">Out of Stock</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Add Product Modal -->
+  <div id="add-product-modal" class="modal-overlay hidden">
+    <div class="modal-content p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-lg font-bold text-slate-800">Add Product</h2>
+        <button onclick="hideAddProductModal()" class="p-1 rounded-lg hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5 text-slate-400"></i>
+        </button>
+      </div>
+      <form id="add-product-form" onsubmit="handleAddProduct(event)">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Product Name *</label>
+            <input type="text" id="prod-name" required
+              class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              placeholder="e.g., Handmade Bracelet">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Description</label>
+            <textarea id="prod-desc" rows="2"
+              class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+              placeholder="Brief description of your product"></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">Selling Price *</label>
+              <input type="number" id="prod-price" required step="0.01" min="0"
+                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                placeholder="0.00">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">Cost Price</label>
+              <input type="number" id="prod-cost" step="0.01" min="0"
+                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                placeholder="0.00">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Stock Quantity *</label>
+            <input type="number" id="prod-stock" required min="0"
+              class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              placeholder="0">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Product Images <span class="text-slate-400 font-normal">(up to 5 images)</span></label>
+            <div class="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-brand-400 transition-colors cursor-pointer"
+              onclick="document.getElementById('prod-files').click()">
+              <div id="files-preview" class="hidden mb-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <!-- Image previews will be added here -->
+              </div>
+              <div id="files-upload-text">
+                <i data-lucide="upload" class="w-8 h-8 text-slate-300 mx-auto mb-2"></i>
+                <p class="text-sm text-slate-500">Click to upload images</p>
+                <p class="text-xs text-slate-400 mt-1">PNG, JPG, GIF (max 5 images)</p>
+              </div>
+              <input type="file" id="prod-files" accept="image/*" multiple class="hidden" onchange="handleFilesSelect(this)">
+            </div>
+          </div>
+          <button type="submit" id="add-prod-btn"
+            class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Add Product</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Order Detail Modal -->
+  <div id="order-detail-modal" class="modal-overlay hidden">
+    <div class="modal-content p-6 max-w-lg">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-lg font-bold text-slate-800">Order Details</h2>
+        <button onclick="hideOrderDetailModal()" class="p-1 rounded-lg hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5 text-slate-400"></i>
+        </button>
+      </div>
+      <div id="order-detail-content">
+        <!-- Order details rendered here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK - Commented out for localhost development -->
+  <!-- <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script> -->
+
+  <!-- App Scripts -->
+  <script src="firebase.js"></script>
+  <script src="auth.js"></script>
+  <script src="products.js"></script>
+  <script src="store.js"></script>
+  <script src="cart.js"></script>
+  <script src="orders.js"></script>
+
+  <script>
+    let currentUser = null;
+    let storeInfo = null;
+    let allProducts = [];
+    let allOrders = [];
+    let currentFilter = 'all';
+
+    // Initialize dashboard
+    async function initDashboard() {
+      currentUser = await requireAuth();
+      if (!currentUser) return;
+
+      // Check if user has store info
+      const result = await getUserStoreInfo(currentUser.uid);
+      if (result.success) {
+        storeInfo = result.data;
+        populateStoreSettings();
+        await loadProducts();
+        await loadOrders();
+        await loadAnalytics();
+        loadInventoryAlerts();
+
+        // Hide loading, show store section
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('section-store').classList.remove('hidden');
+      } else {
+        // No store info - show setup modal
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('store-setup-modal-inline').classList.remove('hidden');
+      }
+
+      lucide.createIcons();
+    }
+
+    // Populate store settings
+    function populateStoreSettings() {
+      document.getElementById('sidebar-store-name').textContent = storeInfo.store_name;
+      document.getElementById('edit-store-name').value = storeInfo.store_name;
+      document.getElementById('edit-store-slug').value = storeInfo.store_slug;
+      document.getElementById('edit-whatsapp').value = storeInfo.whatsapp_number || '';
+
+      const storeUrl = getStoreUrl(storeInfo.store_slug);
+      document.getElementById('store-link').value = storeUrl;
+      document.getElementById('qr-code').src = getQrCodeUrl(storeUrl);
+    }
+
+    // Switch sidebar sections
+    function switchSection(section) {
+      // Hide all sections
+      document.querySelectorAll('[id^="section-"]').forEach(el => el.classList.add('hidden'));
+      // Show selected
+      document.getElementById(`section-${section}`).classList.remove('hidden');
+
+      // Update sidebar active state
+      document.querySelectorAll('.sidebar-link').forEach(link => {
+        link.classList.remove('active');
+        if (link.dataset.section === section) link.classList.add('active');
+      });
+
+      // Close mobile menu
+      if (window.innerWidth < 1024) toggleMobileMenu();
+    }
+
+    // Toggle mobile menu
+    function toggleMobileMenu() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('mobile-overlay');
+      sidebar.classList.toggle('-translate-x-full');
+      overlay.classList.toggle('hidden');
+    }
+
+    // ===== PRODUCTS =====
+    async function loadProducts() {
+      const result = await getProducts(currentUser.uid);
+      if (result.success) {
+        allProducts = result.products;
+        renderProducts(allProducts);
+      } else {
+        showToast('Failed to load products: ' + result.error, 'error');
+      }
+    }
+
+    function renderProducts(products) {
+      const grid = document.getElementById('products-grid');
+      const noProducts = document.getElementById('no-products');
+
+      if (products.length === 0) {
+        grid.innerHTML = '';
+        noProducts.classList.remove('hidden');
+        return;
+      }
+
+      noProducts.classList.add('hidden');
+      grid.innerHTML = products.map(p => {
+        const stockClass = p.stock === 0 ? 'text-red-600 bg-red-50' : p.stock < 5 ? 'text-amber-600 bg-amber-50' : 'text-emerald-600 bg-emerald-50';
+        const stockLabel = p.stock === 0 ? 'Out of stock' : p.stock < 5 ? `Low: ${p.stock}` : `In stock: ${p.stock}`;
+
+        // Handle multiple images - show first image
+        const mediaUrls = p.media_urls || (p.media_url ? [p.media_url] : []);
+        const firstImage = mediaUrls.length > 0 ? mediaUrls[0] : null;
+
+        const mediaEl = firstImage
+          ? (isVideoUrl(firstImage)
+            ? `<video src="${firstImage}" class="w-full h-40 object-cover" muted></video>`
+            : `<img src="${firstImage}" alt="${p.name}" class="w-full h-40 object-cover" loading="lazy">`)
+          : `<div class="w-full h-40 bg-slate-100 flex items-center justify-center"><i data-lucide="image" class="w-8 h-8 text-slate-300"></i></div>`;
+
+        return `
+          <div class="product-card bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            ${mediaEl}
+            <div class="p-4">
+              <h3 class="font-semibold text-slate-800 text-sm mb-1 truncate">${p.name}</h3>
+              ${p.description ? `<p class="text-xs text-slate-400 mb-2 line-clamp-2">${p.description}</p>` : ''}
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-lg font-bold text-brand-600">${formatCurrency(p.price)}</span>
+                <span class="text-xs font-medium px-2 py-1 rounded-lg ${stockClass}">${stockLabel}</span>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="deleteProductConfirm('${p.id}', '${(p.media_paths || [p.media_path]).join(',')}')"
+                  class="flex-1 py-2 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function handleProductSearch(term) {
+      const filtered = filterProducts(allProducts, term);
+      renderProducts(filtered);
+    }
+
+    function showAddProductModal() {
+      document.getElementById('add-product-modal').classList.remove('hidden');
+      document.getElementById('add-product-form').reset();
+      document.getElementById('file-preview').classList.add('hidden');
+      document.getElementById('file-upload-text').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function hideAddProductModal() {
+      document.getElementById('add-product-modal').classList.add('hidden');
+    }
+
+    function handleFilesSelect(input) {
+      const files = Array.from(input.files);
+      if (files.length === 0) return;
+
+      // Limit to 5 files
+      if (files.length > 5) {
+        showToast('Maximum 5 images allowed', 'error');
+        input.value = '';
+        return;
+      }
+
+      // Check if all files are images
+      const invalidFiles = files.filter(file => !file.type.startsWith('image/'));
+      if (invalidFiles.length > 0) {
+        showToast('Only image files are allowed', 'error');
+        input.value = '';
+        return;
+      }
+
+      const previewContainer = document.getElementById('files-preview');
+      const uploadText = document.getElementById('files-upload-text');
+
+      previewContainer.innerHTML = '';
+      files.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          img.className = 'w-full h-20 object-cover rounded-lg';
+          img.alt = `Preview ${index + 1}`;
+          previewContainer.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      previewContainer.classList.remove('hidden');
+      uploadText.classList.add('hidden');
+    }
+
+    async function handleAddProduct(e) {
+      e.preventDefault();
+      const btn = document.getElementById('add-prod-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span><span>Adding...</span>';
+
+      const productData = {
+        name: document.getElementById('prod-name').value.trim(),
+        description: document.getElementById('prod-desc').value.trim(),
+        price: document.getElementById('prod-price').value,
+        cost_price: document.getElementById('prod-cost').value || 0,
+        stock: document.getElementById('prod-stock').value
+      };
+
+      const fileInput = document.getElementById('prod-files');
+      const files = fileInput.files ? Array.from(fileInput.files) : [];
+
+      const result = await addProduct(currentUser.uid, productData, files);
+
+      if (result.success) {
+        showToast('Product added successfully!', 'success');
+        hideAddProductModal();
+        await loadProducts();
+        loadInventoryAlerts();
+        await loadAnalytics();
+      } else {
+        showToast('Failed to add product: ' + result.error, 'error');
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i><span>Add Product</span>';
+      lucide.createIcons();
+    }
+
+    async function deleteProductConfirm(productId, mediaPath) {
+      if (!confirm('Are you sure you want to delete this product?')) return;
+
+      const result = await deleteProduct(productId, mediaPath);
+      if (result.success) {
+        showToast('Product deleted', 'success');
+        await loadProducts();
+        loadInventoryAlerts();
+        await loadAnalytics();
+      } else {
+        showToast('Failed to delete: ' + result.error, 'error');
+      }
+    }
+
+    // ===== ORDERS =====
+    async function loadOrders() {
+      const result = await getOrders(currentUser.uid);
+      if (result.success) {
+        allOrders = result.orders;
+        renderOrders(allOrders);
+      } else {
+        showToast('Failed to load orders: ' + result.error, 'error');
+      }
+    }
+
+    function renderOrders(orders) {
+      const list = document.getElementById('orders-list');
+      const noOrders = document.getElementById('no-orders');
+
+      const filtered = currentFilter === 'all' ? orders : orders.filter(o => o.status === currentFilter);
+
+      if (filtered.length === 0) {
+        list.innerHTML = '';
+        noOrders.classList.remove('hidden');
+        return;
+      }
+
+      noOrders.classList.add('hidden');
+      list.innerHTML = filtered.map(order => {
+        const statusClass = `status-${order.status}`;
+        const itemsList = order.items.map(i =>
+          `<div class="flex justify-between text-sm">
+            <span class="text-slate-600">${i.name} × ${i.quantity}</span>
+            <span class="text-slate-800 font-medium">${formatCurrency(i.price * i.quantity)}</span>
+          </div>`
+        ).join('');
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200 p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="font-semibold text-slate-800">${order.customer_name}</span>
+                  <span class="text-xs font-medium px-2.5 py-1 rounded-full ${statusClass}">${order.status}</span>
+                </div>
+                <div class="flex items-center gap-3 text-xs text-slate-400">
+                  <span>${formatDate(order.created_at)}</span>
+                  <span>•</span>
+                  <span>${order.delivery_type}</span>
+                  ${order.phone ? `<span>•</span><span>${order.phone}</span>` : ''}
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-lg font-bold text-slate-800">${formatCurrency(order.total)}</div>
+                <div class="text-xs text-slate-400">${order.items.length} item(s)</div>
+              </div>
+            </div>
+
+            <div class="border-t border-slate-100 pt-3 mb-3 space-y-1">
+              ${itemsList}
+            </div>
+
+            ${order.address ? `<div class="text-xs text-slate-500 mb-3"><i data-lucide="map-pin" class="w-3 h-3 inline mr-1"></i>${order.address}</div>` : ''}
+
+            <div class="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+              ${order.status !== 'completed' ? `
+                <button onclick="changeOrderStatus('${order.id}', 'completed')"
+                  class="text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors">
+                  Mark Completed
+                </button>` : ''}
+              ${order.status !== 'cancelled' ? `
+                <button onclick="changeOrderStatus('${order.id}', 'cancelled')"
+                  class="text-xs font-medium px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                  Cancel
+                </button>` : ''}
+              ${storeInfo.whatsapp_number ? `
+                <button onclick="sendWhatsApp('${order.id}')"
+                  class="text-xs font-medium px-3 py-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors flex items-center gap-1">
+                  <i data-lucide="message-circle" class="w-3 h-3"></i> WhatsApp
+                </button>` : ''}
+              <button onclick="showOrderDetail('${order.id}')"
+                class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors">
+                View Details
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function filterOrders(filter) {
+      currentFilter = filter;
+      document.querySelectorAll('.order-filter').forEach(btn => {
+        btn.classList.remove('bg-brand-600', 'text-white');
+        btn.classList.add('bg-slate-100', 'text-slate-600');
+      });
+      const activeBtn = document.querySelector(`.order-filter[data-filter="${filter}"]`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-brand-600', 'text-white');
+        activeBtn.classList.remove('bg-slate-100', 'text-slate-600');
+      }
+      renderOrders(allOrders);
+    }
+
+    async function changeOrderStatus(orderId, status) {
+      const result = await updateOrderStatus(orderId, status);
+      if (result.success) {
+        showToast(`Order marked as ${status}`, 'success');
+        await loadOrders();
+        await loadAnalytics();
+      } else {
+        showToast('Failed to update order: ' + result.error, 'error');
+      }
+    }
+
+    function showOrderDetail(orderId) {
+      const order = allOrders.find(o => o.id === orderId);
+      if (!order) return;
+
+      const itemsHtml = order.items.map(i => `
+        <div class="flex justify-between py-2 border-b border-slate-100 last:border-0">
+          <div>
+            <div class="text-sm text-slate-800">${i.name}</div>
+            <div class="text-xs text-slate-400">${formatCurrency(i.price)} × ${i.quantity}</div>
+          </div>
+          <div class="text-sm font-semibold text-slate-800">${formatCurrency(i.price * i.quantity)}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('order-detail-content').innerHTML = `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium px-2.5 py-1 rounded-full status-${order.status}">${order.status}</span>
+            <span class="text-xs text-slate-400">${formatDate(order.created_at)}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><div class="text-xs text-slate-400">Customer</div><div class="text-sm font-medium text-slate-800">${order.customer_name}</div></div>
+            <div><div class="text-xs text-slate-400">Phone</div><div class="text-sm font-medium text-slate-800">${order.phone || 'N/A'}</div></div>
+            <div><div class="text-xs text-slate-400">Delivery Type</div><div class="text-sm font-medium text-slate-800 capitalize">${order.delivery_type}</div></div>
+            ${order.address ? `<div><div class="text-xs text-slate-400">Address</div><div class="text-sm font-medium text-slate-800">${order.address}</div></div>` : ''}
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 mb-2 font-medium uppercase tracking-wider">Items</div>
+            ${itemsHtml}
+          </div>
+          <div class="flex justify-between items-center pt-3 border-t border-slate-200">
+            <span class="font-semibold text-slate-800">Total</span>
+            <span class="text-xl font-bold text-brand-600">${formatCurrency(order.total)}</span>
+          </div>
+        </div>`;
+
+      document.getElementById('order-detail-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function hideOrderDetailModal() {
+      document.getElementById('order-detail-modal').classList.add('hidden');
+    }
+
+    function sendWhatsApp(orderId) {
+      const order = allOrders.find(o => o.id === orderId);
+      if (!order || !storeInfo) return;
+      const message = generateOrderMessage(order, storeInfo.store_name);
+      const link = getWhatsAppLink(storeInfo.whatsapp_number, message);
+      window.open(link, '_blank');
+    }
+
+    // ===== STORE SETTINGS =====
+    async function handleUpdateStore(e) {
+      e.preventDefault();
+      const storeName = document.getElementById('edit-store-name').value.trim();
+      const storeSlug = document.getElementById('edit-store-slug').value.trim().toLowerCase();
+      const whatsapp = document.getElementById('edit-whatsapp').value.trim();
+
+      const result = await updateStoreInfo(currentUser.uid, {
+        store_name: storeName,
+        store_slug: storeSlug,
+        whatsapp_number: whatsapp
+      });
+
+      if (result.success) {
+        storeInfo.store_name = storeName;
+        storeInfo.store_slug = storeSlug;
+        storeInfo.whatsapp_number = whatsapp;
+        populateStoreSettings();
+        showToast('Store updated successfully!', 'success');
+      } else {
+        showToast(result.error, 'error');
+      }
+    }
+
+    function copyStoreLink() {
+      copyToClipboard(document.getElementById('store-link').value);
+    }
+
+    // ===== ANALYTICS =====
+    async function loadAnalytics() {
+      const result = await getOrderStats(currentUser.uid);
+      if (result.success) {
+        document.getElementById('stat-revenue').textContent = formatCurrency(result.totalRevenue);
+        document.getElementById('stat-orders').textContent = result.totalOrders;
+        document.getElementById('stat-products').textContent = result.totalProducts;
+        document.getElementById('stat-profit').textContent = formatCurrency(result.totalProfit);
+        document.getElementById('stat-pending').textContent = result.pendingOrders;
+        document.getElementById('stat-completed').textContent = result.completedOrders;
+        document.getElementById('stat-cancelled').textContent = result.cancelledOrders;
+        document.getElementById('stat-total-products').textContent = result.totalProducts;
+        document.getElementById('stat-low-stock').textContent = result.lowStockProducts;
+        document.getElementById('stat-out-stock').textContent = result.outOfStockProducts;
+      }
+    }
+
+    // ===== INVENTORY ALERTS =====
+    function loadInventoryAlerts() {
+      const alerts = [];
+      allProducts.forEach(p => {
+        if (p.stock === 0) alerts.push({ type: 'error', product: p, message: 'Out of stock' });
+        else if (p.stock < 5) alerts.push({ type: 'warning', product: p, message: `Low stock: ${p.stock} left` });
+      });
+
+      const container = document.getElementById('inventory-alerts');
+      if (alerts.length === 0) {
+        container.innerHTML = `
+          <div class="flex items-center gap-3 p-4 bg-emerald-50 rounded-xl">
+            <i data-lucide="check-circle" class="w-5 h-5 text-emerald-500"></i>
+            <span class="text-sm text-emerald-700">All products are well-stocked!</span>
+          </div>`;
+      } else {
+        container.innerHTML = alerts.map(a => `
+          <div class="flex items-center justify-between p-4 rounded-xl ${a.type === 'error' ? 'bg-red-50' : 'bg-amber-50'}">
+            <div class="flex items-center gap-3">
+              <i data-lucide="${a.type === 'error' ? 'x-circle' : 'alert-triangle'}" class="w-5 h-5 ${a.type === 'error' ? 'text-red-500' : 'text-amber-500'}"></i>
+              <div>
+                <div class="text-sm font-medium ${a.type === 'error' ? 'text-red-700' : 'text-amber-700'}">${a.product.name}</div>
+                <div class="text-xs ${a.type === 'error' ? 'text-red-500' : 'text-amber-500'}">${a.message}</div>
+              </div>
+            </div>
+            <span class="text-xs font-medium px-2 py-1 rounded-lg ${a.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}">${a.product.stock}</span>
+          </div>
+        `).join('');
+      }
+      lucide.createIcons();
+    }
+
+    // Initialize
+    initDashboard();
+  </script>
+</body>
+</html>
