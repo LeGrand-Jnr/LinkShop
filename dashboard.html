@@ -6,7 +6,7 @@
   <title>LinkShop - Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="css/styles.css">
   <script>
     tailwind.config = {
       theme: {
@@ -395,6 +395,87 @@
     </div>
   </div>
 
+  <!-- Edit Product Modal -->
+  <div id="edit-product-modal" class="modal-overlay hidden">
+    <div class="modal-content p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-lg font-bold text-slate-800">Edit Product</h2>
+        <button onclick="closeEditProductModal()" class="p-1 rounded-lg hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5 text-slate-400"></i>
+        </button>
+      </div>
+      <form id="edit-product-form" onsubmit="handleUpdateProduct(event)">
+        <input type="hidden" id="edit-prod-id">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Product Name *</label>
+            <input type="text" id="edit-prod-name" required
+              class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              placeholder="e.g., Handmade Bracelet">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Description</label>
+            <textarea id="edit-prod-desc" rows="2"
+              class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+              placeholder="Brief description of your product"></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">Selling Price *</label>
+              <input type="number" id="edit-prod-price" required step="0.01" min="0"
+                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                placeholder="0.00">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">Cost Price</label>
+              <input type="number" id="edit-prod-cost" step="0.01" min="0"
+                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                placeholder="0.00">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Stock Quantity *</label>
+            <input type="number" id="edit-prod-stock" required min="0"
+              class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              placeholder="0">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Current Images</label>
+            <div id="edit-current-images" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3"></div>
+            <p class="text-xs text-slate-400 mb-3">Leave image upload empty to keep existing product images.</p>
+            <div class="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-brand-400 transition-colors cursor-pointer"
+              onclick="document.getElementById('edit-prod-files').click()">
+              <div id="edit-files-preview" class="hidden mb-3 grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+              <div id="edit-files-upload-text">
+                <i data-lucide="upload" class="w-8 h-8 text-slate-300 mx-auto mb-2"></i>
+                <p class="text-sm text-slate-500">Click to upload replacement images</p>
+                <p class="text-xs text-slate-400 mt-1">PNG, JPG, GIF (max 5 images)</p>
+              </div>
+              <input type="file" id="edit-prod-files" accept="image/*" multiple class="hidden" onchange="handleEditFilesSelect(this)">
+            </div>
+          </div>
+          <button type="submit" id="update-prod-btn"
+            class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span>Save Changes</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Image Viewer Modal -->
+  <div id="image-viewer-modal" class="modal-overlay hidden">
+    <div class="modal-content bg-slate-950/95 p-0 overflow-hidden max-w-5xl w-full">
+      <button onclick="closeImageViewer()" class="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/40 text-white hover:bg-black/60">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <div id="image-viewer-content" class="relative w-full h-[80vh] bg-black flex items-center justify-center">
+        <!-- Fullscreen image/video inserted here -->
+      </div>
+    </div>
+  </div>
+
   <!-- Order Detail Modal -->
   <div id="order-detail-modal" class="modal-overlay hidden">
     <div class="modal-content p-6 max-w-lg">
@@ -417,12 +498,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script> -->
 
   <!-- App Scripts -->
-  <script src="firebase.js"></script>
-  <script src="auth.js"></script>
-  <script src="products.js"></script>
-  <script src="store.js"></script>
-  <script src="cart.js"></script>
-  <script src="orders.js"></script>
+  <script src="js/firebase.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/products.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/orders.js"></script>
 
   <script>
     let currentUser = null;
@@ -527,8 +608,8 @@
 
         const mediaEl = firstImage
           ? (isVideoUrl(firstImage)
-            ? `<video src="${firstImage}" class="w-full h-40 object-cover" muted></video>`
-            : `<img src="${firstImage}" alt="${p.name}" class="w-full h-40 object-cover" loading="lazy">`)
+            ? `<video src="${firstImage}" class="w-full h-40 object-cover cursor-pointer" muted onclick="openImageViewer('${firstImage}')"></video>`
+            : `<img src="${firstImage}" alt="${p.name}" class="w-full h-40 object-cover cursor-pointer" loading="lazy" onclick="openImageViewer('${firstImage}')">`)
           : `<div class="w-full h-40 bg-slate-100 flex items-center justify-center"><i data-lucide="image" class="w-8 h-8 text-slate-300"></i></div>`;
 
         return `
@@ -542,6 +623,10 @@
                 <span class="text-xs font-medium px-2 py-1 rounded-lg ${stockClass}">${stockLabel}</span>
               </div>
               <div class="flex gap-2">
+                <button onclick="openEditProductModal('${p.id}')"
+                  class="flex-1 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                  Edit
+                </button>
                 <button onclick="deleteProductConfirm('${p.id}', '${(p.media_paths || [p.media_path]).join(',')}')"
                   class="flex-1 py-2 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
                   Delete
@@ -642,6 +727,141 @@
       btn.disabled = false;
       btn.innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i><span>Add Product</span>';
       lucide.createIcons();
+    }
+
+    function openEditProductModal(productId) {
+      const product = allProducts.find(p => p.id === productId);
+      if (!product) return;
+
+      document.getElementById('edit-prod-id').value = product.id;
+      document.getElementById('edit-prod-name').value = product.name;
+      document.getElementById('edit-prod-desc').value = product.description || '';
+      document.getElementById('edit-prod-price').value = product.price;
+      document.getElementById('edit-prod-cost').value = product.cost_price || 0;
+      document.getElementById('edit-prod-stock').value = product.stock;
+      document.getElementById('edit-prod-files').value = '';
+
+      const currentImages = document.getElementById('edit-current-images');
+      currentImages.innerHTML = '';
+      const mediaUrls = product.media_urls || (product.media_url ? [product.media_url] : []);
+      if (mediaUrls.length > 0) {
+        mediaUrls.forEach((url, index) => {
+          const img = document.createElement('img');
+          img.src = url;
+          img.alt = `Image ${index + 1}`;
+          img.className = 'w-full h-20 object-cover rounded-lg cursor-pointer';
+          img.onclick = () => openImageViewer(url);
+          currentImages.appendChild(img);
+        });
+      } else {
+        currentImages.innerHTML = '<div class="text-xs text-slate-400">No current images</div>';
+      }
+
+      document.getElementById('edit-files-preview').classList.add('hidden');
+      document.getElementById('edit-files-upload-text').classList.remove('hidden');
+      document.getElementById('edit-product-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeEditProductModal() {
+      document.getElementById('edit-product-modal').classList.add('hidden');
+    }
+
+    function handleEditFilesSelect(input) {
+      const files = Array.from(input.files);
+      if (files.length === 0) return;
+
+      if (files.length > 5) {
+        showToast('Maximum 5 images allowed', 'error');
+        input.value = '';
+        return;
+      }
+
+      const invalidFiles = files.filter(file => !file.type.startsWith('image/'));
+      if (invalidFiles.length > 0) {
+        showToast('Only image files are allowed', 'error');
+        input.value = '';
+        return;
+      }
+
+      const previewContainer = document.getElementById('edit-files-preview');
+      const uploadText = document.getElementById('edit-files-upload-text');
+      previewContainer.innerHTML = '';
+      files.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          img.className = 'w-full h-20 object-cover rounded-lg';
+          img.alt = `Preview ${index + 1}`;
+          previewContainer.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      previewContainer.classList.remove('hidden');
+      uploadText.classList.add('hidden');
+    }
+
+    async function handleUpdateProduct(e) {
+      e.preventDefault();
+      const btn = document.getElementById('update-prod-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span><span>Saving...</span>';
+
+      const productId = document.getElementById('edit-prod-id').value;
+      const productData = {
+        name: document.getElementById('edit-prod-name').value.trim(),
+        description: document.getElementById('edit-prod-desc').value.trim(),
+        price: document.getElementById('edit-prod-price').value,
+        cost_price: document.getElementById('edit-prod-cost').value || 0,
+        stock: document.getElementById('edit-prod-stock').value
+      };
+
+      const fileInput = document.getElementById('edit-prod-files');
+      const files = fileInput.files ? Array.from(fileInput.files) : [];
+      const result = await updateProduct(currentUser.uid, productId, productData, files);
+
+      if (result.success) {
+        showToast('Product updated successfully!', 'success');
+        closeEditProductModal();
+        await loadProducts();
+        loadInventoryAlerts();
+        await loadAnalytics();
+      } else {
+        showToast('Failed to update product: ' + result.error, 'error');
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i><span>Save Changes</span>';
+      lucide.createIcons();
+    }
+
+    function openImageViewer(url) {
+      const viewer = document.getElementById('image-viewer-modal');
+      const content = document.getElementById('image-viewer-content');
+      content.innerHTML = '';
+
+      if (isVideoUrl(url)) {
+        const video = document.createElement('video');
+        video.src = url;
+        video.controls = true;
+        video.autoplay = true;
+        video.className = 'w-full h-full object-contain';
+        content.appendChild(video);
+      } else {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Product Image';
+        img.className = 'max-h-full max-w-full object-contain';
+        content.appendChild(img);
+      }
+
+      viewer.classList.remove('hidden');
+    }
+
+    function closeImageViewer() {
+      document.getElementById('image-viewer-modal').classList.add('hidden');
     }
 
     async function deleteProductConfirm(productId, mediaPath) {

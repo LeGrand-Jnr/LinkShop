@@ -6,7 +6,7 @@
   <title>LinkShop - Store</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="css/styles.css">
   <script>
     tailwind.config = {
       theme: {
@@ -97,6 +97,18 @@
     <span id="floating-cart-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-white text-brand-600 text-xs font-bold rounded-full flex items-center justify-center">0</span>
   </button>
 
+  <!-- Image Viewer Modal -->
+  <div id="image-viewer-modal" class="modal-overlay hidden">
+    <div class="modal-content bg-slate-950/95 p-0 overflow-hidden max-w-5xl w-full">
+      <button onclick="closeImageViewer()" class="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/40 text-white hover:bg-black/60">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <div id="image-viewer-content" class="relative w-full h-[80vh] bg-black flex items-center justify-center">
+        <!-- Fullscreen image/video inserted here -->
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase SDK - Commented out for localhost development -->
   <!-- <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -104,10 +116,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script> -->
 
   <!-- App Scripts -->
-  <script src="firebase.js"></script>
-  <script src="products.js"></script>
-  <script src="store.js"></script>
-  <script src="cart.js"></script>
+  <script src="js/firebase.js"></script>
+  <script src="js/products.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/cart.js"></script>
 
   <script>
     let storeSlug = '';
@@ -164,8 +176,8 @@
 
         const mediaEl = firstImage
           ? (isVideoUrl(firstImage)
-            ? `<div class="media-preview aspect-square"><video src="${firstImage}" class="w-full h-full" muted loop onmouseover="this.play()" onmouseout="this.pause()"></video></div>`
-            : `<div class="media-preview aspect-square"><img src="${firstImage}" alt="${p.name}" class="w-full h-full object-cover" loading="lazy"></div>`)
+            ? `<div class="media-preview aspect-square cursor-pointer" onclick="openImageViewer('${firstImage}')"><video src="${firstImage}" class="w-full h-full" muted loop onmouseover="this.play()" onmouseout="this.pause()"></video></div>`
+            : `<div class="media-preview aspect-square cursor-pointer" onclick="openImageViewer('${firstImage}')"><img src="${firstImage}" alt="${p.name}" class="w-full h-full object-cover" loading="lazy"></div>`)
           : `<div class="aspect-square bg-slate-100 flex items-center justify-center rounded-xl"><i data-lucide="image" class="w-10 h-10 text-slate-200"></i></div>`;
 
         return `
@@ -236,6 +248,33 @@
       document.getElementById('store-error').classList.remove('hidden');
       document.getElementById('error-message').textContent = message;
       lucide.createIcons();
+    }
+
+    function openImageViewer(url) {
+      const viewer = document.getElementById('image-viewer-modal');
+      const content = document.getElementById('image-viewer-content');
+      content.innerHTML = '';
+
+      if (isVideoUrl(url)) {
+        const video = document.createElement('video');
+        video.src = url;
+        video.controls = true;
+        video.autoplay = true;
+        video.className = 'w-full h-full object-contain';
+        content.appendChild(video);
+      } else {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Product Image';
+        img.className = 'max-h-full max-w-full object-contain';
+        content.appendChild(img);
+      }
+
+      viewer.classList.remove('hidden');
+    }
+
+    function closeImageViewer() {
+      document.getElementById('image-viewer-modal').classList.add('hidden');
     }
 
     // Initialize

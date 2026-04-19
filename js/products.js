@@ -65,6 +65,45 @@ async function addProduct(userId, productData, files) {
   }
 }
 
+// Update an existing product
+async function updateProduct(userId, productId, productData, files) {
+  try {
+    const products = getStoredProducts();
+    const product = products[productId];
+
+    if (!product || product.user_id !== userId) {
+      return { success: false, error: 'Product not found or access denied' };
+    }
+
+    // Update fields
+    product.name = productData.name;
+    product.description = productData.description || '';
+    product.price = parseFloat(productData.price);
+    product.cost_price = parseFloat(productData.cost_price) || 0;
+    product.stock = parseInt(productData.stock);
+
+    if (files && files.length > 0) {
+      let mediaUrls = [];
+      let filePaths = [];
+      files.forEach((file, index) => {
+        const timestamp = Date.now();
+        const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const filePath = `products/${userId}/${timestamp}_${index}_${sanitizedName}`;
+        const mediaUrl = `mock-url-${filePath}`;
+        filePaths.push(filePath);
+        mediaUrls.push(mediaUrl);
+      });
+      product.media_urls = mediaUrls;
+      product.media_paths = filePaths;
+    }
+
+    saveProducts(products);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
 // Get all products for a user
 async function getProducts(userId) {
   try {
