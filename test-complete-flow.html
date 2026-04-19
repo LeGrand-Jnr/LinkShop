@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Complete LinkShop Flow</title>
+</head>
+<body>
+    <h1>LinkShop Complete Flow Test</h1>
+    <div id="output"></div>
+
+    <script src="js/firebase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/orders.js"></script>
+    <script src="js/store.js"></script>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const color = type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue';
+            output.innerHTML += `<p style="color: ${color};">${message}</p>`;
+        }
+
+        async function runCompleteTest() {
+            try {
+                // Test 1: Check user migration
+                log('Testing user migration...');
+                const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
+                const userCount = Object.keys(users).length;
+                log(`Found ${userCount} users`);
+
+                let usersWithStores = 0;
+                Object.values(users).forEach(user => {
+                    if (user.store_slug) usersWithStores++;
+                });
+                log(`${usersWithStores} users have store slugs`);
+
+                // Test 2: Create a test user if none exist
+                let testUser;
+                if (userCount === 0) {
+                    log('Creating test user...');
+                    const signupResult = await signup('test@example.com', 'password123');
+                    if (signupResult.success) {
+                        testUser = signupResult.user;
+                        log('✓ Test user created', 'success');
+
+                        // Set up store for test user
+                        const storeResult = await saveStoreInfo(testUser.uid, 'Test Store', 'test-store', '+1234567890');
+                        if (storeResult.success) {
+                            log('✓ Store setup completed', 'success');
+                        } else {
+                            log('✗ Store setup failed: ' + storeResult.error, 'error');
+                        }
+                    } else {
+                        log('✗ User creation failed: ' + signupResult.error, 'error');
+                        return;
+                    }
+                } else {
+                    testUser = Object.values(users)[0];
+                    log('Using existing user: ' + testUser.email);
+                }
+
+                // Test 3: Create a test product
+                log('Creating test product...');
+                const productData = {
+                    name: 'Test Product',
+                    price: 25,
+                    description: 'A test product for flow testing',
+                    stock: 10
+                };
+
+                const productResult = await addProduct(testUser.uid, productData, []);
+                if (productResult.success) {
+                    log('✓ Test product created', 'success');
+                } else {
+                    log('✗ Product creation failed: ' + productResult.error, 'error');
+                    return;
+                }
+
+                // Test 4: Get products by slug
+                log('Testing store access by slug...');
+                const storeResult = await getProductsBySlug('test-store');
+                if (storeResult.success) {
+                    log('✓ Store accessible by slug', 'success');
+                    log(`Found ${storeResult.products.length} products`);
+                } else {
+                    log('✗ Store access failed: ' + storeResult.error, 'error');
+                }
+
+                // Test 5: Test QR code generation
+                log('Testing QR code generation...');
+                const storeUrl = getStoreUrl('test-store');
+                const qrUrl = getQrCodeUrl(storeUrl);
+                log(`Store URL: ${storeUrl}`);
+                log(`QR URL: ${qrUrl}`);
+                if (qrUrl.includes('api.qrserver.com')) {
+                    log('✓ QR code URL generated correctly', 'success');
+                } else {
+                    log('✗ QR code URL generation failed', 'error');
+                }
+
+                // Test 6: Test cart functionality
+                log('Testing cart functionality...');
+                if (storeResult.products.length > 0) {
+                    const testProduct = storeResult.products[0];
+                    const addResult = addToCart(testProduct, 'test-store', testUser.uid);
+                    if (addResult.success) {
+                        log('✓ Product added to cart', 'success');
+
+                        const cart = getCart();
+                        log(`Cart has ${cart.length} items`);
+
+                        // Test order creation
+                        log('Testing order creation...');
+                        const orderData = {
+                            user_id: testUser.uid,
+                            customer_name: 'Test Customer',
+                            phone: '+1234567890',
+                            email: 'customer@example.com',
+                            delivery_type: 'delivery',
+                            address: '123 Test Street',
+                            notes: 'Test order'
+                        };
+
+                        const orderResult = await createOrder(orderData, cart);
+                        if (orderResult.success) {
+                            log('✓ Order created successfully', 'success');
+                            log(`Order ID: ${orderResult.orderId}`);
+                        } else {
+                            log('✗ Order creation failed: ' + orderResult.error, 'error');
+                        }
+                    } else {
+                        log('✗ Cart addition failed: ' + addResult.error, 'error');
+                    }
+                }
+
+                log('🎉 All tests completed!', 'success');
+
+            } catch (error) {
+                log('✗ Test failed with error: ' + error.message, 'error');
+            }
+        }
+
+        // Run tests after a delay to ensure all scripts load
+        setTimeout(runCompleteTest, 1000);
+    </script>
+</body>
+</html></content>
+<parameter name="filePath">c:\Users\samuel\Desktop\vsc\LinkShop\test-complete-flow.html

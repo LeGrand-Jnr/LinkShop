@@ -22,6 +22,38 @@ function generateUserId() {
   return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
+// Migration: Add store info to existing users
+function migrateUserStoreInfo() {
+  const users = getUsers();
+  let migrated = false;
+
+  Object.keys(users).forEach(email => {
+    const user = users[email];
+    if (!user.store_name || !user.store_slug) {
+      // Generate a default store name and slug from email
+      const baseName = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
+      const storeName = baseName.charAt(0).toUpperCase() + baseName.slice(1) + "'s Store";
+      const storeSlug = baseName.toLowerCase();
+
+      user.store_name = user.store_name || storeName;
+      user.store_slug = user.store_slug || storeSlug;
+      user.whatsapp_number = user.whatsapp_number || '';
+      user.created_at = user.created_at || new Date().toISOString();
+
+      console.log(`Migrated user ${email} with store: ${storeName} (${storeSlug})`);
+      migrated = true;
+    }
+  });
+
+  if (migrated) {
+    saveUsers(users);
+    console.log('User migration completed');
+  }
+}
+
+// Initialize migration on module load
+migrateUserStoreInfo();
+
 // Sign up with email and password
 async function signup(email, password) {
   try {

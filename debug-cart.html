@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Cart Issues</title>
+</head>
+<body>
+    <h1>Cart Debug</h1>
+    <div id="output"></div>
+    <button onclick="testAddToCart()">Add Test Item to Cart</button>
+    <button onclick="checkCart()">Check Cart Contents</button>
+    <button onclick="clearCartDebug()">Clear Cart</button>
+
+    <script src="js/firebase.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/auth.js"></script>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const color = type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue';
+            output.innerHTML += `<p style="color: ${color};">${message}</p>`;
+        }
+
+        window.testAddToCart = async function() {
+            // Create a test product
+            const testProduct = {
+                id: 'test-product-123',
+                name: 'Test Product',
+                price: 25,
+                media_urls: ['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='],
+                stock: 10
+            };
+
+            const result = addToCart(testProduct, 'test-store', 'test-user-123');
+            if (result.success) {
+                log('✓ Item added to cart successfully', 'success');
+                checkCart();
+            } else {
+                log('✗ Failed to add item: ' + result.error, 'error');
+            }
+        };
+
+        window.checkCart = function() {
+            const cart = getCart();
+            const storeSlug = getCartStore();
+
+            log(`Cart contains ${cart.length} items`);
+            log(`Cart store: ${storeSlug || 'none'}`);
+
+            if (cart.length > 0) {
+                cart.forEach((item, index) => {
+                    log(`Item ${index + 1}: ${item.name} (x${item.quantity}) - $${item.price}`);
+                    log(`  Product ID: ${item.product_id}`);
+                    log(`  Media URLs: ${item.media_urls ? item.media_urls.length : 0}`);
+                });
+            }
+
+            // Check localStorage directly
+            const rawCart = localStorage.getItem('linkshop_cart');
+            const rawStore = localStorage.getItem('linkshop_cart_store');
+            log(`Raw localStorage cart: ${rawCart}`);
+            log(`Raw localStorage store: ${rawStore}`);
+        };
+
+        window.clearCartDebug = function() {
+            clearCart();
+            log('Cart cleared');
+            checkCart();
+        };
+
+        // Check cart on load
+        checkCart();
+    </script>
+</body>
+</html></content>
+<parameter name="filePath">c:\Users\samuel\Desktop\vsc\LinkShop\debug-cart.html

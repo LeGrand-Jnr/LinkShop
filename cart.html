@@ -49,10 +49,10 @@
         <i data-lucide="shopping-cart" class="w-10 h-10 text-slate-300"></i>
       </div>
       <h2 class="text-xl font-bold text-slate-600 mb-2">Your cart is empty</h2>
-      <p class="text-sm text-slate-400 mb-6">Browse the store and add some items!</p>
-      <button id="back-to-store-btn" onclick="goBackToStore()"
+      <p class="text-sm text-slate-400 mb-6">Browse stores and add some items to get started!</p>
+      <button onclick="goBackToStore()"
         class="bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 px-6 rounded-xl text-sm transition-all">
-        Continue Shopping
+        Browse Stores
       </button>
     </div>
 
@@ -88,12 +88,19 @@
 
   <script>
     function initCart() {
+      // Debug: Check localStorage
+      console.log('Cart localStorage:', localStorage.getItem('linkshop_cart'));
+      console.log('Cart store localStorage:', localStorage.getItem('linkshop_cart_store'));
+
       renderCart();
       lucide.createIcons();
     }
 
     function renderCart() {
       const cart = getCart();
+      console.log('Cart data:', cart);
+      console.log('Cart length:', cart.length);
+
       const itemsEl = document.getElementById('cart-items');
       const emptyEl = document.getElementById('empty-cart');
       const summaryEl = document.getElementById('cart-summary');
@@ -125,7 +132,7 @@
             <div class="flex-1 min-w-0">
               <h3 class="font-semibold text-slate-800 text-sm mb-1 truncate">${item.name}</h3>
               <div class="flex items-center justify-between">
-                <span class="font-bold text-slate-800">$${item.price.toFixed(2)}</span>
+                <span class="font-bold text-slate-800">${formatCurrency(item.price)}</span>
                 <div class="flex items-center gap-2">
                   <button onclick="updateQuantity(${index}, ${item.quantity - 1})"
                     class="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-50"
@@ -149,7 +156,7 @@
       }).join('');
 
       countLabel.textContent = `(${itemCount} item${itemCount !== 1 ? 's' : ''})`;
-      document.getElementById('cart-subtotal').textContent = `$${total.toFixed(2)}`;
+      document.getElementById('cart-subtotal').textContent = formatCurrency(total);
 
       lucide.createIcons();
     }
@@ -175,7 +182,14 @@
     }
 
     function goBackToStore() {
-      window.location.href = 'store.html';
+      // Try to go back to the store that items in cart belong to
+      const cartStore = getCartStore();
+      if (cartStore) {
+        window.location.href = `store.html?shop=${cartStore}`;
+      } else {
+        // No cart store, go to index to browse stores
+        window.location.href = 'index.html';
+      }
     }
 
     // Initialize on load

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete LinkShop Setup & Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .log { margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 3px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>Complete LinkShop Setup & Cart Test</h1>
+
+    <div class="step info">
+        <h3>Step 1: Set Up Test User & Store</h3>
+        <button onclick="setupTestUser()">Create Test User & Store</button>
+        <div id="user-log" class="log"></div>
+    </div>
+
+    <div class="step info">
+        <h3>Step 2: Create Test Products</h3>
+        <button onclick="createTestProducts()">Create Test Products</button>
+        <div id="product-log" class="log"></div>
+    </div>
+
+    <div class="step info">
+        <h3>Step 3: Test Store Access</h3>
+        <button onclick="testStoreAccess()">Open Test Store</button>
+        <div id="store-log" class="log"></div>
+    </div>
+
+    <div class="step info">
+        <h3>Step 4: Test Cart Functionality</h3>
+        <button onclick="testCartDirectly()">Add Items to Cart (Direct)</button>
+        <button onclick="openCartPage()">Open Cart Page</button>
+        <div id="cart-log" class="log"></div>
+    </div>
+
+    <div class="step info">
+        <h3>Step 5: Clear Everything (Reset)</h3>
+        <button onclick="clearAllData()">Clear All Test Data</button>
+        <div id="clear-log" class="log"></div>
+    </div>
+
+    <script src="js/firebase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/cart.js"></script>
+
+    <script>
+        const userLog = document.getElementById('user-log');
+        const productLog = document.getElementById('product-log');
+        const storeLog = document.getElementById('store-log');
+        const cartLog = document.getElementById('cart-log');
+        const clearLog = document.getElementById('clear-log');
+
+        function log(element, message, type = 'info') {
+            const color = type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue';
+            element.innerHTML += `<div style="color: ${color};">${new Date().toLocaleTimeString()}: ${message}</div>`;
+        }
+
+        window.setupTestUser = async function() {
+            userLog.innerHTML = '';
+            log(userLog, 'Setting up test user...');
+
+            try {
+                // Check if user already exists
+                const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
+                const existingUser = Object.values(users).find(u => u.email === 'test@example.com');
+
+                if (existingUser) {
+                    log(userLog, `✓ Test user already exists: ${existingUser.store_name} (${existingUser.store_slug})`, 'success');
+                    return;
+                }
+
+                // Create signup data
+                const signupData = {
+                    email: 'test@example.com',
+                    password: 'password123'
+                };
+
+                log(userLog, 'Creating user account...');
+                const signupResult = await signup(signupData.email, signupData.password);
+
+                if (!signupResult.success) {
+                    log(userLog, `✗ Signup failed: ${signupResult.error}`, 'error');
+                    return;
+                }
+
+                log(userLog, '✓ User account created', 'success');
+
+                // Set up store
+                log(userLog, 'Setting up store...');
+                const storeResult = await saveStoreInfo(signupResult.user.uid, 'Test Store', 'test-store', '+1234567890');
+
+                if (!storeResult.success) {
+                    log(userLog, `✗ Store setup failed: ${storeResult.error}`, 'error');
+                    return;
+                }
+
+                log(userLog, '✓ Store setup completed: Test Store (test-store)', 'success');
+
+            } catch (error) {
+                log(userLog, `✗ Error: ${error.message}`, 'error');
+            }
+        };
+
+        window.createTestProducts = async function() {
+            productLog.innerHTML = '';
+            log(productLog, 'Creating test products...');
+
+            try {
+                // Get test user
+                const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
+                const testUser = Object.values(users).find(u => u.email === 'test@example.com');
+
+                if (!testUser) {
+                    log(productLog, '✗ Test user not found. Run Step 1 first.', 'error');
+                    return;
+                }
+
+                // Create test products
+                const testProducts = [
+                    { name: 'Wireless Headphones', price: 89.99, stock: 15 },
+                    { name: 'Smart Watch', price: 199.99, stock: 8 },
+                    { name: 'Bluetooth Speaker', price: 49.99, stock: 20 },
+                    { name: 'Phone Case', price: 19.99, stock: 30 }
+                ];
+
+                let created = 0;
+                for (const prod of testProducts) {
+                    const productData = {
+                        name: prod.name,
+                        price: prod.price,
+                        description: `High-quality ${prod.name.toLowerCase()} with great features.`,
+                        stock: prod.stock
+                    };
+
+                    const result = await addProduct(testUser.uid, productData, []);
+                    if (result.success) {
+                        created++;
+                        log(productLog, `✓ Created: ${prod.name}`);
+                    } else {
+                        log(productLog, `✗ Failed to create ${prod.name}: ${result.error}`, 'error');
+                    }
+                }
+
+                log(productLog, `✓ Successfully created ${created} test products`, 'success');
+
+            } catch (error) {
+                log(productLog, `✗ Error: ${error.message}`, 'error');
+            }
+        };
+
+        window.testStoreAccess = function() {
+            storeLog.innerHTML = '';
+            log(storeLog, 'Opening test store...');
+            log(storeLog, 'Store URL: store.html?shop=test-store');
+
+            // Test the store access function
+            getProductsBySlug('test-store').then(result => {
+                if (result.success) {
+                    log(storeLog, `✓ Store access successful: ${result.storeInfo.store_name}`, 'success');
+                    log(storeLog, `✓ Found ${result.products.length} products`);
+                } else {
+                    log(storeLog, `✗ Store access failed: ${result.error}`, 'error');
+                }
+            });
+
+            // Open the store
+            window.open('store.html?shop=test-store', '_blank');
+        };
+
+        window.testCartDirectly = function() {
+            cartLog.innerHTML = '';
+            log(cartLog, 'Testing cart functionality...');
+
+            try {
+                // Get a test product
+                const products = JSON.parse(localStorage.getItem('linkshop_products') || '{}');
+                const testProduct = Object.values(products).find(p => p.user_id === 'test-user-store');
+
+                if (!testProduct) {
+                    log(cartLog, '✗ No test products found. Run Step 2 first.', 'error');
+                    return;
+                }
+
+                log(cartLog, `Using test product: ${testProduct.name}`);
+
+                // Add to cart
+                const result = addToCart(testProduct, 'test-store', testProduct.user_id);
+
+                if (result.success) {
+                    log(cartLog, '✓ Product added to cart successfully', 'success');
+
+                    // Check cart
+                    const cart = getCart();
+                    const count = getCartCount();
+                    log(cartLog, `Cart now contains ${cart.length} items (${count} total quantity)`);
+
+                    if (cart.length > 0) {
+                        cart.forEach((item, index) => {
+                            log(cartLog, `Item ${index + 1}: ${item.name} x${item.quantity}`);
+                        });
+                    }
+                } else {
+                    log(cartLog, `✗ Failed to add to cart: ${result.error}`, 'error');
+                }
+
+            } catch (error) {
+                log(cartLog, `✗ Error: ${error.message}`, 'error');
+            }
+        };
+
+        window.openCartPage = function() {
+            log(cartLog, 'Opening cart page...');
+            window.open('cart.html', '_blank');
+        };
+
+        window.clearAllData = function() {
+            clearLog.innerHTML = '';
+            log(clearLog, 'Clearing all test data...');
+
+            try {
+                // Clear test data
+                localStorage.removeItem('linkshop_users');
+                localStorage.removeItem('linkshop_products');
+                localStorage.removeItem('linkshop_cart');
+                localStorage.removeItem('linkshop_cart_store');
+                localStorage.removeItem('linkshop_orders');
+
+                log(clearLog, '✓ All test data cleared', 'success');
+                log(clearLog, 'You can now run the setup again from Step 1');
+
+            } catch (error) {
+                log(clearLog, `✗ Error clearing data: ${error.message}`, 'error');
+            }
+        };
+
+        // Initial status check
+        window.onload = function() {
+            const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
+            const products = JSON.parse(localStorage.getItem('linkshop_products') || '{}');
+            const cart = getCart();
+
+            log(userLog, `Initial status: ${Object.keys(users).length} users, ${Object.keys(products).length} products, ${cart.length} cart items`);
+        };
+    </script>
+</body>
+</html></content>
+<parameter name="filePath">c:\Users\samuel\Desktop\vsc\LinkShop\complete-setup-test.html

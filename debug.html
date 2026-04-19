@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug LinkShop Issues</title>
+</head>
+<body>
+    <h1>LinkShop Debug</h1>
+    <div id="output"></div>
+
+    <script src="js/firebase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/products.js"></script>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const color = type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue';
+            output.innerHTML += `<p style="color: ${color};">${message}</p>`;
+        }
+
+        // Check users
+        const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
+        log(`Found ${Object.keys(users).length} users in localStorage`);
+
+        Object.values(users).forEach((user, index) => {
+            log(`User ${index + 1}: ${user.email}`);
+            log(`  - UID: ${user.uid}`);
+            log(`  - Store Name: ${user.store_name || 'NOT SET'}`);
+            log(`  - Store Slug: ${user.store_slug || 'NOT SET'}`);
+            log(`  - WhatsApp: ${user.whatsapp_number || 'NOT SET'}`);
+
+            if (!user.store_slug) {
+                log(`  ⚠️ This user needs store setup!`, 'error');
+            }
+        });
+
+        // Check products
+        const products = JSON.parse(localStorage.getItem('linkshop_products') || '{}');
+        log(`Found ${Object.keys(products).length} products in localStorage`);
+
+        // Check if checkout.html exists
+        fetch('checkout.html')
+            .then(response => {
+                if (response.ok) {
+                    log('✓ checkout.html exists', 'success');
+                } else {
+                    log('✗ checkout.html does not exist', 'error');
+                }
+            })
+            .catch(() => {
+                log('✗ checkout.html does not exist', 'error');
+            });
+    </script>
+</body>
+</html></content>
+<parameter name="filePath">c:\Users\samuel\Desktop\vsc\LinkShop\debug.html

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Loading Test</title>
+</head>
+<body>
+    <h1>Store Loading Test</h1>
+    <div id="output"></div>
+    <button onclick="testStoreLoading()">Test Store Loading</button>
+    <button onclick="testProductCreation()">Create Test Products</button>
+    <button onclick="testStoreAccess()">Test Store Access</button>
+
+    <script src="js/firebase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/products.js"></script>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const color = type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue';
+            output.innerHTML += `<p style="color: ${color};">${message}</p>`;
+        }
+
+        window.testStoreLoading = async function() {
+            log('Testing store loading...');
+
+            // Test URL parameter extraction
+            const urlParams = new URLSearchParams(window.location.search);
+            const shopParam = urlParams.get('shop');
+            log(`URL shop parameter: ${shopParam || 'none'}`);
+
+            if (!shopParam) {
+                log('No shop parameter in URL - simulating store.html?shop=test-store', 'error');
+                // Simulate the parameter
+                window.history.replaceState(null, null, '?shop=test-store');
+                const newParams = new URLSearchParams(window.location.search);
+                const newShopParam = newParams.get('shop');
+                log(`Simulated shop parameter: ${newShopParam}`);
+            }
+
+            // Test getProductsBySlug
+            const slug = shopParam || 'test-store';
+            log(`Testing getProductsBySlug with slug: ${slug}`);
+
+            const result = await getProductsBySlug(slug);
+            log(`getProductsBySlug result:`, result);
+
+            if (result.success) {
+                log(`✓ Store found: ${result.storeInfo.store_name}`, 'success');
+                log(`✓ Found ${result.products.length} products`);
+                log(`✓ User ID: ${result.userId}`);
+
+                if (result.products.length > 0) {
+                    result.products.forEach((product, index) => {
+                        log(`Product ${index + 1}: ${product.name} (${product.id}) - ${formatCurrency(product.price)}`);
+                    });
+                } else {
+                    log('⚠ No products found for this store', 'error');
+                }
+            } else {
+                log(`✗ Store access failed: ${result.error}`, 'error');
+            }
+        };
+
+        window.testProductCreation = async function() {
+            log('Creating test products...');
+
+            // First ensure we have a test user
+            const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
+            let testUserId = 'test-user-store';
+
+            if (!users['test@example.com']) {
+                users['test@example.com'] = {
+                    uid: testUserId,
+                    email: 'test@example.com',
+                    store_name: 'Test Store',
+                    store_slug: 'test-store',
+                    whatsapp_number: '+1234567890'
+                };
+                localStorage.setItem('linkshop_users', JSON.stringify(users));
+                log('✓ Test user created', 'success');
+            } else {
+                log('Test user already exists');
+                // Get the existing user ID
+                const user = Object.values(users).find(u => u.email === 'test@example.com');
+                if (user) testUserId = user.uid;
+            }
+
+            // Create test products
+            const products = JSON.parse(localStorage.getItem('linkshop_products') || '{}');
+
+            const testProducts = [
+                { id: 'test-prod-1', name: 'Test Product 1', price: 25.00 },
+                { id: 'test-prod-2', name: 'Test Product 2', price: 35.00 },
+                { id: 'test-prod-3', name: 'Test Product 3', price: 45.00 }
+            ];
+
+            let created = 0;
+            for (const prod of testProducts) {
+                if (!products[prod.id]) {
+                    products[prod.id] = {
+                        id: prod.id,
+                        user_id: testUserId,
+                        name: prod.name,
+                        price: prod.price,
+                        description: `Description for ${prod.name}`,
+                        stock: 10,
+                        media_urls: ['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='],
+                        created_at: new Date().toISOString()
+                    };
+                    created++;
+                }
+            }
+
+            if (created > 0) {
+                localStorage.setItem('linkshop_products', JSON.stringify(products));
+                log(`✓ Created ${created} test products`, 'success');
+            } else {
+                log('Test products already exist');
+            }
+        };
+
+        window.testStoreAccess = function() {
+            log('Testing direct store access...');
+            window.open('store.html?shop=test-store', '_blank');
+        };
+    </script>
+</body>
+</html></content>
+<parameter name="filePath">c:\Users\samuel\Desktop\vsc\LinkShop\test-store-loading.html

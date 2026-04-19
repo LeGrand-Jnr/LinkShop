@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Cart Test</title>
+</head>
+<body>
+    <h1>Manual Cart Test</h1>
+    <button onclick="addTestItem()">Add Test Item</button>
+    <button onclick="openCartPage()">Open Cart Page</button>
+    <div id="status"></div>
+
+    <script src="js/firebase.js"></script>
+    <script src="js/cart.js"></script>
+
+    <script>
+        const status = document.getElementById('status');
+
+        window.addTestItem = function() {
+            const testProduct = {
+                id: 'manual-test-123',
+                name: 'Manual Test Product',
+                price: 19.99,
+                media_urls: ['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='],
+                stock: 10
+            };
+
+            const result = addToCart(testProduct, 'test-store', 'test-user');
+            if (result.success) {
+                status.innerHTML = '✓ Item added to cart! Click "Open Cart Page" to see it.';
+            } else {
+                status.innerHTML = '✗ Failed to add item: ' + result.error;
+            }
+        };
+
+        window.openCartPage = function() {
+            window.open('cart.html', '_blank');
+        };
+    </script>
+</body>
+</html></content>
+<parameter name="filePath">c:\Users\samuel\Desktop\vsc\LinkShop\manual-cart-test.html

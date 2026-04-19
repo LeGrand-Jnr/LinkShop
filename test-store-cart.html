@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Store Cart Integration</title>
+</head>
+<body>
+    <h1>Store Cart Integration Test</h1>
+    <div id="output"></div>
+    <button onclick="simulateStoreAddToCart()">Simulate Add to Cart from Store</button>
+    <button onclick="checkCart()">Check Cart</button>
+
+    <script src="js/firebase.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/auth.js"></script>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const color = type === 'success' ? 'green' : type === 'error' : 'red' : 'blue';
+            output.innerHTML += `<p style="color: ${color};">${message}</p>`;
+        }
+
+        window.simulateStoreAddToCart = function() {
+            // Simulate what happens in store.html
+            const mockProduct = {
+                id: 'test-prod-123',
+                name: 'Test Product from Store',
+                price: 29.99,
+                media_urls: ['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='],
+                stock: 5
+            };
+
+            const storeSlug = 'test-store';
+            const userId = 'test-user-123';
+
+            log('Simulating addToCart call from store...');
+            const result = addToCart(mockProduct, storeSlug, userId);
+
+            if (result.success) {
+                log('✓ addToCart returned success', 'success');
+                checkCart();
+            } else {
+                log('✗ addToCart failed: ' + result.error, 'error');
+            }
+        };
+
+        window.checkCart = function() {
+            const cart = getCart();
+            const storeSlug = getCartStore();
+
+            log(`Cart contains ${cart.length} items`);
+            log(`Cart store: ${storeSlug || 'none'}`);
+
+            if (cart.length > 0) {
+                cart.forEach((item, index) => {
+                    log(`Item ${index + 1}: ${item.name} (x${item.quantity}) - $${item.price}`);
+                    log(`  Product ID: ${item.product_id}`);
+                    log(`  Store Slug: ${item.store_slug}`);
+                    log(`  User ID: ${item.user_id}`);
+                });
+            }
+
+            // Check localStorage
+            const rawCart = localStorage.getItem('linkshop_cart');
+            const rawStore = localStorage.getItem('linkshop_cart_store');
+            log(`Raw cart in localStorage: ${rawCart}`);
+            log(`Raw store in localStorage: ${rawStore}`);
+        };
+
+        // Check cart on load
+        checkCart();
+    </script>
+</body>
+</html></content>
+<parameter name="filePath">c:\Users\samuel\Desktop\vsc\LinkShop\test-store-cart.html

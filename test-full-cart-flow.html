@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Cart Flow Test</title>
+</head>
+<body>
+    <h1>Full Cart Flow Test</h1>
+    <div id="output"></div>
+
+    <h2>Step 1: Set up test store</h2>
+    <button onclick="setupTestStore()">Setup Test Store</button>
+
+    <h2>Step 2: Add product to cart</h2>
+    <button onclick="addProductToCart()">Add Product to Cart</button>
+
+    <h2>Step 3: Check cart status</h2>
+    <button onclick="checkCartStatus()">Check Cart Status</button>
+
+    <h2>Step 4: Open cart page</h2>
+    <button onclick="openCartPage()">Open Cart Page</button>
+
+    <script src="js/firebase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/cart.js"></script>
+
+    <script>
+        const output = document.getElementById('output');
+        let testStoreSlug = 'test-store-flow';
+        let testUserId = 'test-user-flow';
+
+        function log(message, type = 'info') {
+            const color = type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue';
+            output.innerHTML += `<p style="color: ${color};">${message}</p>`;
+        }
+
+        window.setupTestStore = async function() {
+            // Create test user with store
+            const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
+            if (!users['test@example.com']) {
+                users['test@example.com'] = {
+                    uid: testUserId,
+                    email: 'test@example.com',
+                    store_name: 'Test Store Flow',
+                    store_slug: testStoreSlug,
+                    whatsapp_number: '+1234567890'
+                };
+                localStorage.setItem('linkshop_users', JSON.stringify(users));
+                log('✓ Test user and store created', 'success');
+            } else {
+                log('Test user already exists');
+            }
+
+            // Create test product
+            const products = JSON.parse(localStorage.getItem('linkshop_products') || '{}');
+            const testProductId = 'test-product-flow';
+            if (!products[testProductId]) {
+                products[testProductId] = {
+                    id: testProductId,
+                    user_id: testUserId,
+                    name: 'Test Flow Product',
+                    price: 25.50,
+                    description: 'A test product for cart flow',
+                    stock: 10,
+                    media_urls: ['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='],
+                    created_at: new Date().toISOString()
+                };
+                localStorage.setItem('linkshop_products', JSON.stringify(products));
+                log('✓ Test product created', 'success');
+            } else {
+                log('Test product already exists');
+            }
+        };
+
+        window.addProductToCart = function() {
+            const testProduct = {
+                id: 'test-product-flow',
+                name: 'Test Flow Product',
+                price: 25.50,
+                media_urls: ['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='],
+                stock: 10
+            };
+
+            log('Adding product to cart...');
+            const result = addToCart(testProduct, testStoreSlug, testUserId);
+
+            if (result.success) {
+                log('✓ Product added to cart successfully', 'success');
+            } else {
+                log('✗ Failed to add product: ' + result.error, 'error');
+            }
+        };
+
+        window.checkCartStatus = function() {
+            const cart = getCart();
+            const storeSlug = getCartStore();
+            const count = getCartCount();
+            const total = getCartTotal();
+
+            log(`Cart contains ${cart.length} items (${count} total quantity)`);
+            log(`Cart store: ${storeSlug}`);
+            log(`Cart total: ${formatCurrency(total)}`);
+
+            if (cart.length > 0) {
+                cart.forEach((item, index) => {
+                    log(`Item ${index + 1}: ${item.name} x${item.quantity} = ${formatCurrency(item.price * item.quantity)}`);
+                });
+            }
+        };
+
+        window.openCartPage = function() {
+            window.open('cart.html', '_blank');
+        };
+
+        // Check initial status
+        checkCartStatus();
+    </script>
+</body>
+</html></content>
+<parameter name="filePath">c:\Users\samuel\Desktop\vsc\LinkShop\test-full-cart-flow.html

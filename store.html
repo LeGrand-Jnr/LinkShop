@@ -203,10 +203,33 @@
     }
 
     function handleAddToCart(productId) {
+      console.log('handleAddToCart called with productId:', productId);
+      console.log('storeSlug:', storeSlug);
+      console.log('storeOwner:', storeOwner);
+
       const product = storeProducts.find(p => p.id === productId);
-      if (!product) return;
+      console.log('Found product:', product);
+
+      if (!product) {
+        console.error('Product not found:', productId);
+        showToast('Product not found', 'error');
+        return;
+      }
+
+      if (!storeSlug) {
+        console.error('No store slug available');
+        showToast('Store not properly loaded', 'error');
+        return;
+      }
+
+      if (!storeOwner) {
+        console.error('No store owner available');
+        showToast('Store owner not found', 'error');
+        return;
+      }
 
       const result = addToCart(product, storeSlug, storeOwner);
+      console.log('addToCart result:', result);
       if (result.success) {
         showToast(`${product.name} added to cart!`, 'success');
         updateCartBadge();
