@@ -15,10 +15,52 @@ function saveProducts(products) {
   localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
 }
 
-// Helper: Generate product ID
-function generateProductId() {
-  return 'prod_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+// Helper: Convert file to data URL
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = (e) => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
 }
+
+// Migration: Update existing products with mock URLs to use proper data URLs
+function migrateProductImages() {
+  const products = getStoredProducts();
+  let migrated = false;
+
+  Object.keys(products).forEach(productId => {
+    const product = products[productId];
+
+    // Check if product has old mock URLs
+    if (product.media_urls && product.media_urls.length > 0) {
+      const hasMockUrls = product.media_urls.some(url => url.includes('mock-image') || url.includes('placeholder'));
+      if (hasMockUrls) {
+        // For now, we'll clear the mock URLs since we can't convert them back to actual files
+        // In a real app, you'd need to re-upload the images
+        console.warn(`Product ${product.name} has mock URLs that need to be re-uploaded`);
+        product.media_urls = [];
+        migrated = true;
+      }
+    }
+
+    // Check legacy media_url field
+    if (product.media_url && (product.media_url.includes('mock-image') || product.media_url.includes('placeholder'))) {
+      console.warn(`Product ${product.name} has legacy mock URL that needs to be re-uploaded`);
+      product.media_url = null;
+      migrated = true;
+    }
+  });
+
+  if (migrated) {
+    saveProducts(products);
+    console.log('Product migration completed. Products with mock URLs have been cleared and need re-uploading.');
+  }
+}
+
+// Initialize migration on module load
+migrateProductImages();
 
 // Add a new product
 async function addProduct(userId, productData, files) {
@@ -29,17 +71,18 @@ async function addProduct(userId, productData, files) {
     let mediaUrls = [];
     let filePaths = [];
 
-    // Mock file upload - in real app this would upload to storage
+    // Process uploaded files to data URLs for localhost display
     if (files && files.length > 0) {
-      files.forEach((file, index) => {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const dataUrl = await readFileAsDataURL(file);
         const timestamp = Date.now();
         const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const filePath = `products/${userId}/${timestamp}_${index}_${sanitizedName}`;
-        // For localhost, we'll use mock URLs
-        const mediaUrl = `mock-url-${filePath}`;
+        const filePath = `products/${userId}/${timestamp}_${i}_${sanitizedName}`;
+
         filePaths.push(filePath);
-        mediaUrls.push(mediaUrl);
-      });
+        mediaUrls.push(dataUrl); // Store actual data URL instead of mock URL
+      }
     }
 
     // Save product
@@ -51,8 +94,8 @@ async function addProduct(userId, productData, files) {
       price: parseFloat(productData.price),
       cost_price: parseFloat(productData.cost_price) || 0,
       stock: parseInt(productData.stock),
-      media_urls: mediaUrls, // Changed from media_url to media_urls (array)
-      media_paths: filePaths, // Changed from media_path to media_paths (array)
+      media_urls: mediaUrls, // Array of data URLs
+      media_paths: filePaths, // Array of file paths
       created_at: new Date().toISOString()
     };
 
@@ -85,14 +128,18 @@ async function updateProduct(userId, productId, productData, files) {
     if (files && files.length > 0) {
       let mediaUrls = [];
       let filePaths = [];
-      files.forEach((file, index) => {
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const dataUrl = await readFileAsDataURL(file);
         const timestamp = Date.now();
         const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const filePath = `products/${userId}/${timestamp}_${index}_${sanitizedName}`;
-        const mediaUrl = `mock-url-${filePath}`;
+        const filePath = `products/${userId}/${timestamp}_${i}_${sanitizedName}`;
+
         filePaths.push(filePath);
-        mediaUrls.push(mediaUrl);
-      });
+        mediaUrls.push(dataUrl); // Store actual data URL
+      }
+
       product.media_urls = mediaUrls;
       product.media_paths = filePaths;
     }

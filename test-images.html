@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Image Display Fix</title>
+    <link href="https://cdn.tailwindcss.com" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8">LinkShop Image Display Test</h1>
+
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Test Results</h2>
+            <div id="test-results" class="space-y-2">
+                <p>Running tests...</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Upload Test Product</h2>
+            <form id="test-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Product Name</label>
+                    <input type="text" id="test-name" value="Test Product" class="w-full p-2 border rounded" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Price</label>
+                    <input type="number" id="test-price" value="50" class="w-full p-2 border rounded" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Images (max 5)</label>
+                    <input type="file" id="test-images" multiple accept="image/*" class="w-full p-2 border rounded" required>
+                </div>
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    Create Test Product
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Created Products</h2>
+            <div id="products-display" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Products will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="js/firebase.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/auth.js"></script>
+
+    <script>
+        const resultsDiv = document.getElementById('test-results');
+        const productsDiv = document.getElementById('products-display');
+
+        function log(message, type = 'info') {
+            const color = type === 'success' ? 'text-green-600' : type === 'error' ? 'text-red-600' : 'text-blue-600';
+            resultsDiv.innerHTML += `<p class="${color}">${message}</p>`;
+        }
+
+        // Test 1: Check if FileReader is available
+        if (typeof FileReader !== 'undefined') {
+            log('✓ FileReader API is available', 'success');
+        } else {
+            log('✗ FileReader API is not available', 'error');
+        }
+
+        // Test 2: Check if localStorage is working
+        try {
+            localStorage.setItem('test', 'working');
+            localStorage.removeItem('test');
+            log('✓ localStorage is working', 'success');
+        } catch (e) {
+            log('✗ localStorage is not working: ' + e.message, 'error');
+        }
+
+        // Test 3: Check if products module is loaded
+        if (typeof addProduct !== 'undefined') {
+            log('✓ Products module is loaded', 'success');
+        } else {
+            log('✗ Products module is not loaded', 'error');
+        }
+
+        // Test 4: Check existing products
+        const existingProducts = JSON.parse(localStorage.getItem('linkshop_products') || '{}');
+        const productCount = Object.keys(existingProducts).length;
+        log(`Found ${productCount} existing products in localStorage`);
+
+        // Check for mock URLs in existing products
+        let mockUrlCount = 0;
+        Object.values(existingProducts).forEach(product => {
+            if (product.media_urls) {
+                product.media_urls.forEach(url => {
+                    if (url.includes('mock-image') || url.includes('placeholder')) {
+                        mockUrlCount++;
+                    }
+                });
+            }
+            if (product.media_url && (product.media_url.includes('mock-image') || product.media_url.includes('placeholder'))) {
+                mockUrlCount++;
+            }
+        });
+
+        if (mockUrlCount > 0) {
+            log(`⚠ Found ${mockUrlCount} products with mock URLs that need re-uploading`, 'error');
+        } else {
+            log('✓ No products with mock URLs found', 'success');
+        }
+
+        // Test form submission
+        document.getElementById('test-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('test-name').value;
+            const price = parseFloat(document.getElementById('test-price').value);
+            const files = document.getElementById('test-images').files;
+
+            if (files.length === 0) {
+                log('Please select at least one image', 'error');
+                return;
+            }
+
+            if (files.length > 5) {
+                log('Maximum 5 images allowed', 'error');
+                return;
+            }
+
+            log('Creating test product...');
+
+            try {
+                // Create a test user if none exists
+                let testUserId = 'test-user-123';
+                const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
+                if (!users[testUserId]) {
+                    users[testUserId] = {
+                        uid: testUserId,
+                        email: 'test@example.com',
+                        store_name: 'Test Store',
+                        store_slug: 'test-store',
+                        role: 'admin'
+                    };
+                    localStorage.setItem('linkshop_users', JSON.stringify(users));
+                }
+
+                const productData = {
+                    name: name,
+                    price: price,
+                    description: 'Test product for image display verification',
+                    stock: 10
+                };
+
+                const result = await addProduct(testUserId, productData, files);
+
+                if (result.success) {
+                    log('✓ Test product created successfully!', 'success');
+                    displayProducts();
+                } else {
+                    log('✗ Failed to create product: ' + result.error, 'error');
+                }
+            } catch (error) {
+                log('✗ Error creating product: ' + error.message, 'error');
+            }
+        });
+
+        // Display products
+        function displayProducts() {
+            const products = JSON.parse(localStorage.getItem('linkshop_products') || '{}');
+            const productList = Object.values(products);
+
+            if (productList.length === 0) {
+                productsDiv.innerHTML = '<p class="text-gray-500">No products found</p>';
+                return;
+            }
+
+            productsDiv.innerHTML = productList.map(product => {
+                const mediaUrls = product.media_urls || [];
+                const firstImage = mediaUrls.length > 0 ? mediaUrls[0] : null;
+
+                return `
+                    <div class="border rounded-lg p-4">
+                        <h3 class="font-semibold mb-2">${product.name}</h3>
+                        <p class="text-sm text-gray-600 mb-2">${formatCurrency(product.price)}</p>
+                        ${firstImage ? `
+                            <img src="${firstImage}" alt="${product.name}" class="w-full h-32 object-cover rounded mb-2">
+                            <p class="text-xs text-green-600">✓ Image displays correctly</p>
+                        ` : `
+                            <div class="w-full h-32 bg-gray-200 rounded mb-2 flex items-center justify-center">
+                                <span class="text-gray-500">No image</span>
+                            </div>
+                        `}
+                        <p class="text-xs text-gray-500">${mediaUrls.length} image(s)</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Load products on page load
+        displayProducts();
+    </script>
+</body>
+</html></content>
+<parameter name="filePath">c:\Users\samuel\Desktop\vsc\LinkShop\test-images.html
