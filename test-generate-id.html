@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test generateProductId Fix</title>
+</head>
+<body>
+    <h1>Testing generateProductId Fix</h1>
+    <div id="output"></div>
+
+    <script src="js/firebase.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/auth.js"></script>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const color = type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue';
+            output.innerHTML += `<p style="color: ${color};">${message}</p>`;
+        }
+
+        // Test 1: Check if generateProductId function exists
+        if (typeof generateProductId === 'function') {
+            log('✓ generateProductId function is defined', 'success');
+
+            // Test generating an ID
+            const testId = generateProductId();
+            log(`✓ Generated test ID: ${testId}`, 'success');
+
+            // Test ID format
+            if (testId.startsWith('prod_')) {
+                log('✓ ID has correct prefix', 'success');
+            } else {
+                log('✗ ID does not have correct prefix', 'error');
+            }
+        } else {
+            log('✗ generateProductId function is not defined', 'error');
+        }
+
+        // Test 2: Check if addProduct function exists
+        if (typeof addProduct === 'function') {
+            log('✓ addProduct function is defined', 'success');
+        } else {
+            log('✗ addProduct function is not defined', 'error');
+        }
+
+        // Test 3: Try to add a test product (without files for simplicity)
+        async function testAddProduct() {
+            try {
+                // Create a test user if needed
+                let testUserId = 'test-user-123';
+                const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
+                if (!users[testUserId]) {
+                    users[testUserId] = {
+                        uid: testUserId,
+                        email: 'test@example.com',
+                        store_name: 'Test Store',
+                        store_slug: 'test-store',
+                        role: 'admin'
+                    };
+                    localStorage.setItem('linkshop_users', JSON.stringify(users));
+                }
+
+                const productData = {
+                    name: 'Test Product ' + Date.now(),
+                    price: 25,
+                    description: 'Test product for generateProductId fix',
+                    stock: 5
+                };
+
+                log('Attempting to add test product...');
+                const result = await addProduct(testUserId, productData, []);
+
+                if (result.success) {
+                    log('✓ Test product added successfully!', 'success');
+                } else {
+                    log('✗ Failed to add test product: ' + result.error, 'error');
+                }
+            } catch (error) {
+                log('✗ Error testing addProduct: ' + error.message, 'error');
+            }
+        }
+
+        // Run the test after a short delay to ensure scripts are loaded
+        setTimeout(testAddProduct, 1000);
+    </script>
+</body>
+</html></content>
+<parameter name="filePath">c:\Users\samuel\Desktop\vsc\LinkShop\test-generate-id.html

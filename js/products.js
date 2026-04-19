@@ -62,6 +62,11 @@ function migrateProductImages() {
 // Initialize migration on module load
 migrateProductImages();
 
+// Helper: Generate unique product ID
+function generateProductId() {
+  return 'prod_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
 // Add a new product
 async function addProduct(userId, productData, files) {
   try {
