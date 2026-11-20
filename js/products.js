@@ -12,7 +12,14 @@ function getStoredProducts() {
 
 // Helper: Save products to localStorage
 function saveProducts(products) {
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+  try {
+    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+  } catch (error) {
+    if (error && (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+      throw new Error('Browser storage is full. Remove large or unused product images, or upload fewer/smaller images.');
+    }
+    throw error;
+  }
 }
 
 // Helper: Convert file to data URL
@@ -23,6 +30,49 @@ function readFileAsDataURL(file) {
     reader.onerror = (e) => reject(new Error('Failed to read file'));
     reader.readAsDataURL(file);
   });
+}
+
+// Resize/compress an uploaded image before converting it to a data URL
+async function compressImage(file, maxWidth = 900, quality = 0.68) {
+  if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+    return readFileAsDataURL(file);
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Failed to process image'));
+      img.src = objectUrl;
+    });
+
+    const scale = Math.min(1, maxWidth / Math.max(image.naturalWidth, image.naturalHeight));
+    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+    const height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', { alpha: true });
+    context.drawImage(image, 0, 0, width, height);
+
+    const blob = await new Promise((resolve) => {
+      canvas.toBlob(resolve, 'image/webp', quality);
+    });
+
+    if (!blob) throw new Error('Failed to compress image');
+
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('Failed to read compressed image'));
+      reader.readAsDataURL(blob);
+    });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 // Migration: Update existing products with mock URLs to use proper data URLs
@@ -54,7 +104,11 @@ function migrateProductImages() {
   });
 
   if (migrated) {
-    saveProducts(products);
+    try {
+      saveProducts(products);
+    } catch (error) {
+      console.warn(error.message);
+    }
     console.log('Product migration completed. Products with mock URLs have been cleared and need re-uploading.');
   }
 }
@@ -80,7 +134,7 @@ async function addProduct(userId, productData, files) {
     if (files && files.length > 0) {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const dataUrl = await readFileAsDataURL(file);
+        const dataUrl = await compressImage(file); // Compress image before storing
         const timestamp = Date.now();
         const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const filePath = `products/${userId}/${timestamp}_${i}_${sanitizedName}`;
@@ -136,7 +190,7 @@ async function updateProduct(userId, productId, productData, files) {
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const dataUrl = await readFileAsDataURL(file);
+        const dataUrl = await compressImage(file); // Compress image before storing
         const timestamp = Date.now();
         const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const filePath = `products/${userId}/${timestamp}_${i}_${sanitizedName}`;
