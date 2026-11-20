@@ -179,6 +179,14 @@
       renderCheckoutItems();
       updateCheckoutTotal();
       lucide.createIcons();
+
+      const currentCustomer = getCurrentCustomer();
+      if (currentCustomer) {
+        document.getElementById('customer-name').value = currentCustomer.name || '';
+        document.getElementById('customer-phone').value = currentCustomer.phone || '';
+        document.getElementById('customer-email').value = currentCustomer.email || '';
+        document.getElementById('customer-address').value = currentCustomer.address || '';
+      }
     }
 
     function renderCheckoutItems() {

@@ -187,6 +187,35 @@ async function updateCustomerOrder(orderId, updates) {
   return { success: true };
 }
 
+async function updateOrderPayment(orderId, paymentStatus, paymentReference = '') {
+  const orders = getStoredOrders();
+  if (!orders[orderId]) return { success: false, error: 'Order not found' };
+  orders[orderId].payment_status = paymentStatus === 'paid' ? 'paid' : 'pending';
+  if (paymentReference) orders[orderId].payment_reference = paymentReference.trim();
+  saveOrders(orders);
+  return { success: true };
+}
+
+async function updateOrderDelivery(orderId, deliveryStage) {
+  const orders = getStoredOrders();
+  if (!orders[orderId]) return { success: false, error: 'Order not found' };
+
+  const stageToStatus = {
+    order_received: 'pending',
+    confirmed: 'processing',
+    out_for_delivery: 'shipped',
+    delivered: 'completed',
+    cancelled: 'cancelled'
+  };
+  orders[orderId].delivery_stage = deliveryStage;
+  orders[orderId].status = stageToStatus[deliveryStage] || orders[orderId].status;
+  if (deliveryStage === 'delivered' && orders[orderId].payment_method !== 'Mobile Money') {
+    orders[orderId].payment_status = 'paid';
+  }
+  saveOrders(orders);
+  return { success: true };
+}
+
 // Get order statistics for analytics
 async function getOrderStats(userId) {
   try {

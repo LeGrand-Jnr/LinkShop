@@ -76,10 +76,13 @@
     }
 
     function loginCustomer(event) {
-      event.preventEvent ? event.preventEvent() : event.preventDefault();
+      event.preventDefault();
       const phone = normalizeCustomerPhone(document.getElementById('customer-phone-login').value);
-      if (!phone) return;
-      localStorage.setItem('linkshop_current_customer', phone);
+      if (phone.length < 8) {
+        showToast('Enter a valid phone number', 'error');
+        return;
+      }
+      getOrCreateCustomer({ phone, name: '', email: '', address: '' });
       activePhone = phone;
       loadCustomerOrders();
     }
