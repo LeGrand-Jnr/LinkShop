@@ -3,6 +3,47 @@
 // ============================================
 
 const ORDERS_KEY = 'linkshop_orders';
+const CUSTOMERS_KEY = 'linkshop_customers';
+
+function normalizeCustomerPhone(phone) {
+  return String(phone || '').replace(/[^0-9]/g, '');
+}
+
+function getStoredCustomers() {
+  const customers = localStorage.getItem(CUSTOMERS_KEY);
+  return customers ? JSON.parse(customers) : {};
+}
+
+function saveStoredCustomers(customers) {
+  localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(customers));
+}
+
+function getOrCreateCustomer(customerData) {
+  const phone = normalizeCustomerPhone(customerData.phone);
+  if (!phone) return null;
+
+  const customers = getStoredCustomers();
+  const existing = customers[phone] || {};
+  const customer = {
+    phone,
+    name: customerData.name || existing.name || '',
+    email: customerData.email || existing.email || '',
+    address: customerData.address || existing.address || '',
+    created_at: existing.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+  customers[phone] = customer;
+  saveStoredCustomers(customers);
+  localStorage.setItem('linkshop_current_customer', phone);
+  return customer;
+}
+
+function getCurrentCustomer() {
+  const phone = normalizeCustomerPhone(localStorage.getItem('linkshop_current_customer'));
+  if (!phone) return null;
+  const customer = getStoredCustomers()[phone];
+  return customer || null;
+}
 
 // Helper: Get orders from localStorage
 function getStoredOrders() {
@@ -26,19 +67,34 @@ async function createOrder(orderData, cartItems) {
     const orders = getStoredOrders();
     const orderId = generateOrderId();
     const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const customerPhone = normalizeCustomerPhone(orderData.phone);
+
+    getOrCreateCustomer({
+      name: orderData.customer_name,
+      phone: customerPhone,
+      email: orderData.email,
+      address: orderData.address
+    });
 
     // Create order
     const order = {
       id: orderId,
+      reference: 'LS-' + orderId.slice(-8).toUpperCase(),
+      store_slug: orderData.store_slug || getCartStore() || '',
       user_id: orderData.user_id,
+      customer_id: customerPhone,
       customer_name: orderData.customer_name,
       phone: orderData.phone,
       email: orderData.email || '',
       delivery_type: orderData.delivery_type,
       address: orderData.address || '',
       notes: orderData.notes || '',
+      payment_method: orderData.payment_method || 'Pay on delivery',
+      payment_status: orderData.payment_status || 'pending',
+      payment_reference: orderData.payment_reference || '',
       total: total,
       status: 'pending',
+      delivery_stage: 'order_received',
       created_at: new Date().toISOString(),
       items: cartItems.map(item => ({
         id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -69,6 +125,23 @@ async function createOrder(orderData, cartItems) {
   }
 }
 
+// Get all orders for a phone-number customer account
+async function getCustomerOrders(phone, storeSlug) {
+  try {
+    const customerPhone = normalizeCustomerPhone(phone);
+    const orders = getStoredOrders();
+    const customerOrders = Object.values(orders).filter(order => {
+      if (normalizeCustomerPhone(order.phone) !== customerPhone) return false;
+      if (storeSlug) return order.store_slug === storeSlug;
+      return true;
+    });
+    customerOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return { success: true, orders: customerOrders };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
 // Get all orders for a user
 async function getOrders(userId) {
   try {
@@ -90,6 +163,13 @@ async function updateOrderStatus(orderId, status) {
     const orders = getStoredOrders();
     if (orders[orderId]) {
       orders[orderId].status = status;
+      if (status === 'processing') orders[orderId].delivery_stage = 'confirmed';
+      if (status === 'shipped') orders[orderId].delivery_stage = 'out_for_delivery';
+      if (status === 'completed') {
+        orders[orderId].delivery_stage = 'delivered';
+        if (orders[orderId].payment_method !== 'Mobile Money') orders[orderId].payment_status = 'paid';
+      }
+      if (status === 'cancelled') orders[orderId].delivery_stage = 'cancelled';
       saveOrders(orders);
       return { success: true };
     }
@@ -97,6 +177,14 @@ async function updateOrderStatus(orderId, status) {
   } catch (error) {
     return { success: false, error: error.message };
   }
+}
+
+async function updateCustomerOrder(orderId, updates) {
+  const orders = getStoredOrders();
+  if (!orders[orderId]) return { success: false, error: 'Order not found' };
+  Object.assign(orders[orderId], updates);
+  saveOrders(orders);
+  return { success: true };
 }
 
 // Get order statistics for analytics

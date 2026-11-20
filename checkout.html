@@ -92,6 +92,22 @@
                 <textarea id="order-notes" placeholder="Any special instructions..." rows="2"
                   class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"></textarea>
               </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">Payment Method</label>
+                <select id="payment-method" onchange="togglePaymentReference()"
+                  class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                  <option value="Pay on delivery">Pay on delivery</option>
+                  <option value="Mobile Money">Mobile Money</option>
+                  <option value="Card">Card / Bank transfer</option>
+                </select>
+              </div>
+
+              <div id="payment-reference-wrap" class="hidden">
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">Payment Reference <span class="text-slate-400 font-normal">(if paid)</span></label>
+                <input type="text" id="payment-reference" placeholder="Transaction or transfer reference"
+                  class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              </div>
             </div>
 
             <button type="submit" id="checkout-btn"
@@ -130,6 +146,10 @@
           class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 rounded-xl transition-all">
           Continue Shopping
         </button>
+        <a id="view-customer-orders" href="#" class="mt-3 w-full border border-brand-200 text-brand-700 font-semibold py-2.5 rounded-xl transition-all items-center justify-center gap-2 hidden">
+          <i data-lucide="receipt-text" class="w-4 h-4"></i>
+          View My Orders
+        </a>
       </div>
     </div>
   </div>
@@ -207,14 +227,25 @@
         notes: document.getElementById('order-notes').value.trim()
       };
 
+      const paymentMethod = document.getElementById('payment-method').value;
+      let paymentReference = '';
+
+      if (paymentMethod !== 'Pay on delivery') {
+        paymentReference = document.getElementById('payment-reference').value.trim();
+      }
+
       const orderData = {
         user_id: cartItems[0]?.user_id, // Get user_id from first cart item
+        store_slug: storeSlug,
         customer_name: customerData.name,
         phone: customerData.phone,
         email: customerData.email,
         delivery_type: 'delivery', // Default to delivery
         address: customerData.address,
-        notes: customerData.notes
+        notes: customerData.notes,
+        payment_method: document.getElementById('payment-method').value,
+        payment_reference: document.getElementById('payment-reference').value.trim(),
+        payment_status: document.getElementById('payment-reference').value.trim() ? 'paid' : 'pending'
       };
 
       const result = await createOrder(orderData, cartItems);
@@ -225,6 +256,11 @@
 
         document.getElementById('success-order-id').textContent = result.orderId;
         document.getElementById('order-success-modal').classList.remove('hidden');
+
+        const customerOrdersLink = document.getElementById('view-customer-orders');
+        customerOrdersLink.href = `customer.html${storeSlug ? `?shop=${encodeURIComponent(storeSlug)}` : ''}`;
+        customerOrdersLink.classList.remove('hidden');
+        customerOrdersLink.classList.add('flex');
 
         const ownerId = cartItems[0]?.user_id;
         const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
@@ -273,6 +309,11 @@
       } else {
         window.location.href = 'index.html';
       }
+    }
+
+    function togglePaymentReference() {
+      const method = document.getElementById('payment-method').value;
+      document.getElementById('payment-reference-wrap').classList.toggle('hidden', method === 'Pay on delivery');
     }
 
     // Initialize
