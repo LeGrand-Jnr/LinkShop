@@ -1,5 +1,5 @@
 // ============================================
-// ORDERS MODULE (LOCALHOST VERSION)
+// ORDERS MODULE
 // ============================================
 
 const ORDERS_KEY = 'linkshop_orders';

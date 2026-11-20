@@ -1,5 +1,5 @@
 // ============================================
-// PRODUCT MANAGEMENT MODULE (LOCALHOST VERSION)
+// PRODUCT MANAGEMENT MODULE
 // ============================================
 
 const PRODUCTS_KEY = 'linkshop_products';

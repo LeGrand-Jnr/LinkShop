@@ -1,5 +1,5 @@
 // ============================================
-// AUTHENTICATION MODULE (LOCALHOST VERSION)
+// AUTHENTICATION MODULE
 // ============================================
 
 // Local storage keys

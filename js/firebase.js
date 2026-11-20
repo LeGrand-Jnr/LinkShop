@@ -1,7 +1,6 @@
 // ============================================
-// FIREBASE CONFIGURATION (LOCALHOST MOCK)
-// Replace these values with your Firebase project config
-// Go to: Firebase Console > Project Settings > Your apps > Web app
+// FIREBASE CONFIGURATION AND SHARED HELPERS
+// Production implementation loads configuration from firebase-config.js.
 // ============================================
 
 // Mock Firebase objects for localhost development

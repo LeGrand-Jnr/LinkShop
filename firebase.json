@@ -1,0 +1,33 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      ".venv/**",
+      "FIREBASE_SETUP.md",
+      "firestore.rules",
+      "storage.rules",
+      "js/firebase-config.example.js"
+    ],
+    "cleanUrls": false,
+    "trailingSlash": false
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "*.local"
+    ]
+  }
+}

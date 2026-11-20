@@ -1,0 +1,34 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsShop(shopId) {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/shops/$(shopId))
+        && firestore.get(/databases/(default)/documents/shops/$(shopId)).data.ownerId == request.auth.uid;
+    }
+
+    function validImage() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /shops/{shopId}/{fileName} {
+      allow read: if true;
+      allow write: if ownsShop(shopId) && validImage();
+    }
+
+    match /products/{shopId}/{fileName} {
+      allow read: if true;
+      allow write: if ownsShop(shopId) && validImage();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
