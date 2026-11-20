@@ -515,29 +515,39 @@
 
     // Initialize dashboard
     async function initDashboard() {
-      currentUser = await requireAuth();
-      if (!currentUser) return;
+      try {
+        currentUser = await requireAuth();
+        if (!currentUser) {
+          const loading = document.getElementById('loading-state');
+          if (loading) loading.innerHTML = '<p class="text-slate-500 text-sm">Please sign in to continue...</p>';
+          return;
+        }
 
-      // Check if user has store info
-      const result = await getUserStoreInfo(currentUser.uid);
-      if (result.success) {
-        storeInfo = result.data;
-        populateStoreSettings();
-        await loadProducts();
-        await loadOrders();
-        await loadAnalytics();
-        loadInventoryAlerts();
-
-        // Hide loading, show store section
-        document.getElementById('loading-state').classList.add('hidden');
-        document.getElementById('section-store').classList.remove('hidden');
-      } else {
-        // No store info - show setup modal
-        document.getElementById('loading-state').classList.add('hidden');
-        document.getElementById('store-setup-modal-inline').classList.remove('hidden');
+        const result = await getUserStoreInfo(currentUser.uid);
+        if (result.success) {
+          storeInfo = result.data;
+          document.getElementById('loading-state').classList.add('hidden');
+          populateStoreSettings();
+          await loadProducts();
+          await loadOrders();
+          await loadAnalytics();
+          loadInventoryAlerts();
+          document.getElementById('section-store').classList.remove('hidden');
+        } else {
+          document.getElementById('loading-state').classList.add('hidden');
+          document.getElementById('store-setup-modal-inline').classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Dashboard initialization failed:', error);
+        document.getElementById('loading-state').innerHTML = `
+          <div class="text-center">
+            <p class="text-slate-700 font-semibold mb-2">The dashboard could not finish loading</p>
+            <p class="text-sm text-slate-500 mb-4">Check that you are signed in and try again.</p>
+            <button onclick="location.reload()" class="bg-brand-600 text-white px-4 py-2 rounded-xl text-sm">Reload dashboard</button>
+          </div>`;
       }
 
-      lucide.createIcons();
+      if (window.lucide) lucide.createIcons();
     }
 
     // Populate store settings
@@ -552,7 +562,13 @@
 
       const qrContainer = document.getElementById('qr-code');
       qrContainer.innerHTML = '';
-      new QRCode(qrContainer, { text: storeUrl, width: 128, height: 128, correctLevel: QRCode.CorrectLevel.M });
+      if (window.QRCode) {
+        try {
+          new QRCode(qrContainer, { text: storeUrl, width: 128, height: 128, correctLevel: QRCode.CorrectLevel.M });
+        } catch (error) {
+          qrContainer.innerHTML = '<p class="text-xs text-slate-400">QR unavailable</p>';
+        }
+      }
     }
 
     // Switch sidebar sections

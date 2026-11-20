@@ -8,17 +8,15 @@
 const auth = {
   currentUser: null,
   onAuthStateChanged: (callback) => {
-    // Simulate async auth state check
     setTimeout(() => {
       const currentUserData = localStorage.getItem('linkshop_current_user');
-      if (currentUserData) {
-        auth.currentUser = JSON.parse(currentUserData);
-      } else {
+      try {
+        auth.currentUser = currentUserData ? JSON.parse(currentUserData) : null;
+      } catch {
         auth.currentUser = null;
       }
       callback(auth.currentUser);
     }, 100);
-    // Return unsubscribe function
     return () => {};
   }
 };
@@ -169,33 +167,4 @@ async function copyToClipboard(text) {
     document.body.removeChild(textarea);
     showToast('Copied to clipboard!', 'success');
   }
-}
-
-// Helper: Get current user (Promise)
-function getCurrentUser() {
-  return new Promise((resolve) => {
-    const unsubscribe = auth.onAuthStateChanged(user => {
-      unsubscribe();
-      resolve(user);
-    });
-  });
-}
-
-// Helper: Redirect if not authenticated
-async function requireAuth() {
-  const user = await getCurrentUser();
-  if (!user) {
-    window.location.href = 'index.html';
-    return null;
-  }
-  return user;
-}
-
-// Helper: Redirect if authenticated
-async function redirectIfAuth() {
-  const user = await getCurrentUser();
-  if (user) {
-    window.location.href = 'dashboard.html';
-  }
-  return user;
 }
