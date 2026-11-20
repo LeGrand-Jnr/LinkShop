@@ -1,75 +1,34 @@
 // ============================================
 // FIREBASE CONFIGURATION AND SHARED HELPERS
-// Production implementation loads configuration from firebase-config.js.
 // ============================================
 
-// Mock Firebase objects for localhost development
-const auth = {
-  currentUser: null,
-  onAuthStateChanged: (callback) => {
-    setTimeout(() => {
-      const currentUserData = localStorage.getItem('linkshop_current_user');
-      try {
-        auth.currentUser = currentUserData ? JSON.parse(currentUserData) : null;
-      } catch {
-        auth.currentUser = null;
-      }
-      callback(auth.currentUser);
-    }, 100);
-    return () => {};
-  }
-};
+const LINKSHOP_CONFIG = window.LINKSHOP_FIREBASE_CONFIG || {};
 
-const db = {
-  collection: (name) => ({
-    doc: (id) => ({
-      get: async () => {
-        // Mock get operation - not used in localhost version
-        return { exists: false };
-      },
-      set: async () => {
-        // Mock set operation
-      },
-      update: async () => {
-        // Mock update operation
-      }
-    }),
-    where: () => ({
-      get: async () => {
-        // Mock query operation
-        return { empty: true, docs: [] };
-      }
-    })
-  })
-};
+if (!LINKSHOP_CONFIG.projectId || String(LINKSHOP_CONFIG.projectId).startsWith('YOUR_')) {
+  console.error('Firebase is not configured. Copy firebase-config.example.js to firebase-config.js and add your project values.');
+} else if (!firebase.apps.length) {
+  firebase.initializeApp(LINKSHOP_CONFIG);
+}
 
-const storage = {
-  ref: () => ({
-    put: async () => ({
-      ref: {
-        getDownloadURL: async () => 'mock-url'
-      }
-    })
-  })
-};
+if (LINKSHOP_CONFIG.appCheckSiteKey && !String(LINKSHOP_CONFIG.appCheckSiteKey).startsWith('YOUR_') && firebase.appCheck) {
+  firebase.appCheck().activate(LINKSHOP_CONFIG.appCheckSiteKey, true);
+}
 
-const firebase = {
-  firestore: {
-    FieldValue: {
-      serverTimestamp: () => new Date()
-    }
-  }
-};
+const auth = firebase.auth ? firebase.auth() : null;
+const db = firebase.firestore ? firebase.firestore() : null;
+const storage = firebase.storage ? firebase.storage() : null;
 
 // Helper: Get current user (Promise)
 function getCurrentUser() {
   return new Promise((resolve) => {
-    const currentUserData = localStorage.getItem('linkshop_current_user');
-    if (currentUserData) {
-      resolve(JSON.parse(currentUserData));
-    } else {
+    if (!firebase.auth) {
       resolve(null);
+      return;
     }
+    const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+      unsubscribe();
+      resolve(user);
+    });
   });
 }
 

@@ -1,245 +1,148 @@
 // ============================================
-// AUTHENTICATION MODULE
+// AUTHENTICATION MODULE — FIREBASE
 // ============================================
 
-// Local storage keys
 const USERS_KEY = 'linkshop_users';
-const CURRENT_USER_KEY = 'linkshop_current_user';
+const LEGACY_USER_KEY = 'linkshop_current_user';
 
-// Helper: Get users from localStorage
-function getUsers() {
-  const users = localStorage.getItem(USERS_KEY);
-  return users ? JSON.parse(users) : {};
+function firebaseAuthError(error) {
+  const messages = {
+    'auth/email-already-in-use': 'This email is already registered.',
+    'auth/invalid-email': 'Enter a valid email address.',
+    'auth/weak-password': 'Password must be at least 6 characters.',
+    'auth/user-not-found': 'No account found with this email.',
+    'auth/wrong-password': 'Incorrect password.',
+    'auth/invalid-credential': 'Email or password is incorrect.'
+  };
+  return messages[error.code] || error.message || 'Authentication failed.';
 }
 
-// Helper: Save users to localStorage
-function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-// Helper: Generate simple user ID
-function generateUserId() {
-  return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-}
-
-// Migration: Add store info to existing users
-function migrateUserStoreInfo() {
-  const users = getUsers();
-  let migrated = false;
-
-  Object.keys(users).forEach(email => {
-    const user = users[email];
-    if (!user.store_name || !user.store_slug) {
-      // Generate a default store name and slug from email
-      const baseName = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
-      const storeName = baseName.charAt(0).toUpperCase() + baseName.slice(1) + "'s Store";
-      const storeSlug = baseName.toLowerCase();
-
-      user.store_name = user.store_name || storeName;
-      user.store_slug = user.store_slug || storeSlug;
-      user.whatsapp_number = user.whatsapp_number || '';
-      user.created_at = user.created_at || new Date().toISOString();
-
-      console.log(`Migrated user ${email} with store: ${storeName} (${storeSlug})`);
-      migrated = true;
-    }
-  });
-
-  if (migrated) {
-    saveUsers(users);
-    console.log('User migration completed');
-  }
-}
-
-// Initialize migration on module load
-migrateUserStoreInfo();
-
-// Sign up with email and password
 async function signup(email, password) {
   try {
-    console.log('Attempting signup for:', email);
-    const users = getUsers();
-    console.log('Existing users:', Object.keys(users));
+    if (password.length < 6) return { success: false, error: 'Password must be at least 6 characters.' };
+    const credential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+    const user = credential.user;
 
-    // Check if email already exists
-    if (users[email]) {
-      console.log('Email already exists');
-      return { success: false, error: 'This email is already registered.' };
-    }
+    await firebase.firestore().collection('users').doc(user.uid).set({
+      name: '',
+      email: user.email,
+      role: 'owner',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
 
-    // Validate password
-    if (password.length < 6) {
-      console.log('Password too short');
-      return { success: false, error: 'Password must be at least 6 characters.' };
-    }
-
-    // Create user
-    const userId = generateUserId();
-    const user = {
-      uid: userId,
-      email: email,
-      password: password, // In real app, this would be hashed
-      created_at: new Date().toISOString()
-    };
-
-    users[email] = user;
-    saveUsers(users);
-    console.log('User created and saved');
-
-    // Set as current user
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-    console.log('User set as current user');
-
-    return { success: true, user: user };
+    localStorage.removeItem(LEGACY_USER_KEY);
+    localStorage.removeItem(USERS_KEY);
+    return { success: true, user: { uid: user.uid, email: user.email } };
   } catch (error) {
-    console.error('Signup error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: firebaseAuthError(error) };
   }
 }
 
-// Login with email and password
 async function login(email, password) {
   try {
-    console.log('Attempting login for:', email);
-    const users = getUsers();
-    console.log('Users in storage:', Object.keys(users));
-
-    const user = users[email];
-
-    if (!user) {
-      console.log('No user found with email:', email);
-      return { success: false, error: 'No account found with this email.' };
-    }
-
-    console.log('User found:', user);
-    console.log('Stored password:', user.password);
-    console.log('Provided password:', password);
-
-    if (user.password !== password) {
-      console.log('Password mismatch');
-      return { success: false, error: 'Incorrect password.' };
-    }
-
-    // Set as current user
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-    console.log('Login successful, user set in localStorage');
-
-    return { success: true, user: user };
+    const credential = await firebase.auth().signInWithEmailAndPassword(email, password);
+    const user = credential.user;
+    localStorage.removeItem(LEGACY_USER_KEY);
+    localStorage.removeItem(USERS_KEY);
+    return { success: true, user: { uid: user.uid, email: user.email } };
   } catch (error) {
-    console.error('Login error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: firebaseAuthError(error) };
   }
 }
 
-// Normalize store slug
 function normalizeStoreSlug(slug) {
-  // Convert to string, trim, and lowercase
-  slug = String(slug).trim().toLowerCase();
-
-  // Replace spaces and invalid characters with dashes
-  slug = slug.replace(/[^a-z0-9]+/g, '-');
-
-  // Remove leading/trailing dashes
-  slug = slug.replace(/^-+|-+$/g, '');
-
-  return slug;
+  return String(slug || '')
+    .trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
-// Save store info after signup
 async function saveStoreInfo(userId, storeName, storeSlug, whatsappNumber) {
   try {
-    const users = getUsers();
-    const user = Object.values(users).find(u => u.uid === userId);
-
-    if (!user) {
-      return { success: false, error: 'User not found' };
-    }
-
-    // Normalize store slug
     storeName = String(storeName || '').trim();
     storeSlug = normalizeStoreSlug(storeSlug);
+    if (!storeName || !storeSlug) return { success: false, error: 'Store name and URL are required.' };
 
-    if (!storeName || !storeSlug) {
-      return { success: false, error: 'Store name and URL are required.' };
+    const shops = firebase.firestore().collection('shops');
+    const existing = await shops.where('slug', '==', storeSlug).get();
+    if (!existing.empty) {
+      const conflict = existing.docs.find(doc => doc.id !== userId && doc.data().ownerId !== userId);
+      if (conflict) return { success: false, error: 'This store URL is already taken. Please choose another.' };
     }
 
-    // Check if slug is unique
-    const existingUser = Object.values(users).find(u => normalizeStoreSlug(u.store_slug) === storeSlug && u.uid !== userId);
-    if (existingUser) {
-      return { success: false, error: 'This store URL is already taken. Please choose another.' };
-    }
+    const shopId = storeSlug;
+    await shops.doc(shopId).set({
+      ownerId: userId,
+      shopName: storeName,
+      slug: storeSlug,
+      description: '',
+      logo: '',
+      whatsappNumber: whatsappNumber || '',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
 
-    // Update user with store info
-    user.store_name = storeName;
-    user.store_slug = storeSlug;
-    user.whatsapp_number = whatsappNumber || '';
-    user.created_at = new Date().toISOString();
+    await firebase.firestore().collection('users').doc(userId).set({
+      name: storeName,
+      email: firebase.auth().currentUser?.email || '',
+      role: 'owner',
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
 
-    saveUsers(users);
-
-    return { success: true };
+    return { success: true, shopId };
   } catch (error) {
     return { success: false, error: error.message };
   }
 }
 
-// Get user's store info
 async function getUserStoreInfo(userId) {
   try {
-    const users = getUsers();
-    const user = Object.values(users).find(u => u.uid === userId);
-
-    if (!user || !user.store_name) {
-      return { success: false, error: 'Store info not found' };
-    }
-
+    const snap = await firebase.firestore().collection('shops').where('ownerId', '==', userId).limit(1).get();
+    if (snap.empty) return { success: false, error: 'Store info not found' };
+    const doc = snap.docs[0];
+    const data = doc.data();
     return {
       success: true,
+      id: doc.id,
       data: {
-        store_name: user.store_name,
-        store_slug: user.store_slug,
-        whatsapp_number: user.whatsapp_number,
-        created_at: user.created_at
-      },
-      id: userId
+        store_name: data.shopName,
+        store_slug: data.slug,
+        whatsapp_number: data.whatsappNumber || '',
+        description: data.description || '',
+        logo: data.logo || '',
+        created_at: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : ''
+      }
     };
   } catch (error) {
     return { success: false, error: error.message };
   }
 }
 
-// Update store info
 async function updateStoreInfo(userId, updates) {
   try {
-    const users = getUsers();
-    const user = Object.values(users).find(u => u.uid === userId);
+    const shopInfo = await getUserStoreInfo(userId);
+    if (!shopInfo.success) return shopInfo;
 
-    if (!user) {
-      return { success: false, error: 'User not found' };
+    const storeSlug = updates.store_slug ? normalizeStoreSlug(updates.store_slug) : shopInfo.data.store_slug;
+    if (storeSlug !== shopInfo.id) {
+      return { success: false, error: 'Store URL changes require support.' };
     }
 
-    // Check slug uniqueness if updating
-    if (updates.store_slug) {
-      updates.store_slug = normalizeStoreSlug(updates.store_slug);
-
-      const existingUser = Object.values(users).find(u => u.store_slug === updates.store_slug && u.uid !== userId);
-      if (existingUser) {
-        return { success: false, error: 'This store URL is already taken.' };
-      }
-    }
-
-    // Update user data
-    Object.assign(user, updates);
-    saveUsers(users);
-
+    await firebase.firestore().collection('shops').doc(shopInfo.id).update({
+      shopName: updates.store_name || shopInfo.data.store_name,
+      slug: storeSlug,
+      description: updates.description || shopInfo.data.description || '',
+      logo: updates.logo || shopInfo.data.logo || '',
+      whatsappNumber: updates.whatsapp_number || shopInfo.data.whatsapp_number || '',
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }
 }
 
-// Logout
-function logout() {
-  localStorage.removeItem(CURRENT_USER_KEY);
+async function logout() {
+  await firebase.auth().signOut();
+  localStorage.removeItem(LEGACY_USER_KEY);
   window.location.href = 'index.html';
 }

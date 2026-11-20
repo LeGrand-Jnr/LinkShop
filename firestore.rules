@@ -85,7 +85,13 @@ service cloud.firestore {
 
       // Orders must be submitted through the Cloud Function so totals,
       // prices, stock, server timestamps, and abuse controls are trusted.
-      allow create, update, delete: if false;
+      allow create, delete: if false;
+      allow update: if signedIn()
+        && exists(/databases/$(database)/documents/shops/$(resource.data.shopId))
+        && get(/databases/$(database)/documents/shops/$(resource.data.shopId)).data.ownerId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'delivery_stage', 'payment_status', 'payment_reference', 'updatedAt'
+        ]);
     }
 
     match /{document=**} {

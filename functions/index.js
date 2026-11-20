@@ -101,3 +101,48 @@ exports.createOrder = onCall({ enforceAppCheck: true, cors: true }, async (reque
     throw new HttpsError('internal', 'Could not create order.');
   }
 });
+
+exports.getCustomerOrders = onCall({ enforceAppCheck: true, cors: true }, async (request) => {
+  const customerPhone = String((request.data && request.data.customerPhone) || '').replace(/[^0-9]/g, '').slice(0, 30);
+  const shopId = String((request.data && request.data.shopId) || '').trim().slice(0, 128);
+
+  if (customerPhone.length < 8) {
+    throw new HttpsError('invalid-argument', 'Enter a valid phone number.');
+  }
+
+  try {
+    let query = db.collection('orders').where('customerPhone', '==', customerPhone);
+    if (shopId) query = query.where('shopId', '==', shopId);
+    const snapshot = await query.limit(100).get();
+
+    const orders = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        reference: 'LS-' + doc.id.slice(-8).toUpperCase(),
+        shopId: data.shopId,
+        store_slug: data.shopId,
+        customerName: data.customerName,
+        customer_name: data.customerName,
+        customerPhone: data.customerPhone,
+        phone: data.customerPhone,
+        address: data.address || '',
+        notes: data.notes || '',
+        payment_method: data.payment_method || 'Pay on delivery',
+        payment_status: data.payment_status || 'pending',
+        payment_reference: data.payment_reference || '',
+        total: data.total || 0,
+        status: data.status || 'pending',
+        delivery_stage: data.delivery_stage || 'order_received',
+        created_at: data.createdAt && data.createdAt.toDate ? data.createdAt.toDate().toISOString() : '',
+        items: data.items || []
+      };
+    });
+
+    orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return { orders };
+  } catch (error) {
+    console.error('getCustomerOrders failed', error);
+    throw new HttpsError('internal', 'Could not load customer orders.');
+  }
+});

@@ -1,45 +1,14 @@
 // ============================================
-// PRODUCT MANAGEMENT MODULE
+// PRODUCT MANAGEMENT MODULE — FIRESTORE + STORAGE
 // ============================================
 
 const PRODUCTS_KEY = 'linkshop_products';
 
-// Helper: Get products from localStorage
-function getStoredProducts() {
-  const products = localStorage.getItem(PRODUCTS_KEY);
-  return products ? JSON.parse(products) : {};
-}
-
-// Helper: Save products to localStorage
-function saveProducts(products) {
-  try {
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
-  } catch (error) {
-    if (error && (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
-      throw new Error('Browser storage is full. Remove large or unused product images, or upload fewer/smaller images.');
-    }
-    throw error;
-  }
-}
-
-// Helper: Convert file to data URL
-function readFileAsDataURL(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => resolve(e.target.result);
-    reader.onerror = (e) => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
-}
-
-// Resize/compress an uploaded image before converting it to a data URL
 async function compressImage(file, maxWidth = 900, quality = 0.68) {
   if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') {
-    return readFileAsDataURL(file);
+    throw new Error('Only PNG, JPG, GIF or WebP images are supported.');
   }
-
   const objectUrl = URL.createObjectURL(file);
-
   try {
     const image = await new Promise((resolve, reject) => {
       const img = new Image();
@@ -47,74 +16,47 @@ async function compressImage(file, maxWidth = 900, quality = 0.68) {
       img.onerror = () => reject(new Error('Failed to process image'));
       img.src = objectUrl;
     });
-
     const scale = Math.min(1, maxWidth / Math.max(image.naturalWidth, image.naturalHeight));
-    const width = Math.max(1, Math.round(image.naturalWidth * scale));
-    const height = Math.max(1, Math.round(image.naturalHeight * scale));
-
     const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d', { alpha: true });
-    context.drawImage(image, 0, 0, width, height);
-
-    const blob = await new Promise((resolve) => {
-      canvas.toBlob(resolve, 'image/webp', quality);
-    });
-
-    if (!blob) throw new Error('Failed to compress image');
-
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
     return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('Failed to read compressed image'));
-      reader.readAsDataURL(blob);
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Failed to compress image')), 'image/webp', quality);
     });
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
 }
 
-// Migration: Update existing products with mock URLs to use proper data URLs
-function migrateProductImages() {
-  const products = getStoredProducts();
-  let migrated = false;
-
-  Object.keys(products).forEach(productId => {
-    const product = products[productId];
-
-    // Check if product has old mock URLs
-    if (product.media_urls && product.media_urls.length > 0) {
-      const hasMockUrls = product.media_urls.some(url => url.includes('mock-image') || url.includes('placeholder'));
-      if (hasMockUrls) {
-        // For now, we'll clear the mock URLs since we can't convert them back to actual files
-        // In a real app, you'd need to re-upload the images
-        console.warn(`Product ${product.name} has mock URLs that need to be re-uploaded`);
-        product.media_urls = [];
-        migrated = true;
-      }
-    }
-
-    // Check legacy media_url field
-    if (product.media_url && (product.media_url.includes('mock-image') || product.media_url.includes('placeholder'))) {
-      console.warn(`Product ${product.name} has legacy mock URL that needs to be re-uploaded`);
-      product.media_url = null;
-      migrated = true;
-    }
-  });
-
-  if (migrated) {
-    try {
-      saveProducts(products);
-    } catch (error) {
-      console.warn(error.message);
-    }
-    console.log('Product migration completed. Products with mock URLs have been cleared and need re-uploading.');
+async function uploadProductImages(shopId, files) {
+  const urls = [];
+  const paths = [];
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const blob = await compressImage(file);
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `products/${shopId}/${Date.now()}_${i}_${safeName}.webp`;
+    const ref = firebase.storage().ref(path);
+    await ref.put(blob, { contentType: 'image/webp' });
+    urls.push(await ref.getDownloadURL());
+    paths.push(path);
   }
+  return { urls, paths };
 }
 
-// Initialize migration on module load
-migrateProductImages();
+async function deleteProductImages(paths) {
+  if (!Array.isArray(paths)) return;
+  await Promise.all(paths.map(path => firebase.storage().ref(path).delete().catch(() => null)));
+}
+
+function getStoredProducts() {
+  return {};
+}
+
+function saveProducts() {
+  localStorage.removeItem(PRODUCTS_KEY);
+}
 
 // Helper: Generate unique product ID
 function generateProductId() {
@@ -124,43 +66,32 @@ function generateProductId() {
 // Add a new product
 async function addProduct(userId, productData, files) {
   try {
-    const products = getStoredProducts();
-    const productId = generateProductId();
+    const shopSnap = await firebase.firestore().collection('shops').where('ownerId', '==', userId).limit(1).get();
+    if (shopSnap.empty) return { success: false, error: 'Create your shop before adding products.' };
+    const shopId = shopSnap.docs[0].id;
 
     let mediaUrls = [];
-    let filePaths = [];
-
-    // Process uploaded files to data URLs for localhost display
+    let mediaPaths = [];
     if (files && files.length > 0) {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const dataUrl = await compressImage(file); // Compress image before storing
-        const timestamp = Date.now();
-        const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const filePath = `products/${userId}/${timestamp}_${i}_${sanitizedName}`;
-
-        filePaths.push(filePath);
-        mediaUrls.push(dataUrl); // Store actual data URL instead of mock URL
-      }
+      const upload = await uploadProductImages(shopId, Array.from(files));
+      mediaUrls = upload.urls;
+      mediaPaths = upload.paths;
     }
 
-    // Save product
-    const product = {
-      id: productId,
-      user_id: userId,
-      name: productData.name,
+    const productId = generateProductId();
+    await firebase.firestore().collection('products').doc(productId).set({
+      shopId,
+      name: String(productData.name).trim(),
       description: productData.description || '',
       price: parseFloat(productData.price),
       cost_price: parseFloat(productData.cost_price) || 0,
       stock: parseInt(productData.stock),
-      media_urls: mediaUrls, // Array of data URLs
-      media_paths: filePaths, // Array of file paths
-      created_at: new Date().toISOString()
-    };
-
-    products[productId] = product;
-    saveProducts(products);
-
+      image: mediaUrls[0] || '',
+      media_urls: mediaUrls,
+      media_paths: mediaPaths,
+      user_id: userId,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
     return { success: true, id: productId };
   } catch (error) {
     return { success: false, error: error.message };
@@ -170,56 +101,52 @@ async function addProduct(userId, productData, files) {
 // Update an existing product
 async function updateProduct(userId, productId, productData, files) {
   try {
-    const products = getStoredProducts();
-    const product = products[productId];
-
-    if (!product || product.user_id !== userId) {
+    const ref = firebase.firestore().collection('products').doc(productId);
+    const snap = await ref.get();
+    if (!snap.exists) return { success: false, error: 'Product not found' };
+    const product = snap.data();
+    if (product.user_id !== userId && product.shopId !== await getShopIdForOwner(userId)) {
       return { success: false, error: 'Product not found or access denied' };
     }
 
-    // Update fields
-    product.name = productData.name;
-    product.description = productData.description || '';
-    product.price = parseFloat(productData.price);
-    product.cost_price = parseFloat(productData.cost_price) || 0;
-    product.stock = parseInt(productData.stock);
+    const updates = {
+      name: String(productData.name).trim(),
+      description: productData.description || '',
+      price: parseFloat(productData.price),
+      cost_price: parseFloat(productData.cost_price) || 0,
+      stock: parseInt(productData.stock),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
 
     if (files && files.length > 0) {
-      let mediaUrls = [];
-      let filePaths = [];
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const dataUrl = await compressImage(file); // Compress image before storing
-        const timestamp = Date.now();
-        const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const filePath = `products/${userId}/${timestamp}_${i}_${sanitizedName}`;
-
-        filePaths.push(filePath);
-        mediaUrls.push(dataUrl); // Store actual data URL
-      }
-
-      product.media_urls = mediaUrls;
-      product.media_paths = filePaths;
+      const shopId = product.shopId;
+      const upload = await uploadProductImages(shopId, Array.from(files));
+      await deleteProductImages(product.media_paths);
+      updates.image = upload.urls[0] || '';
+      updates.media_urls = upload.urls;
+      updates.media_paths = upload.paths;
     }
-
-    saveProducts(products);
+    await ref.update(updates);
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }
 }
 
+async function getShopIdForOwner(userId) {
+  const snap = await firebase.firestore().collection('shops').where('ownerId', '==', userId).limit(1).get();
+  return snap.empty ? '' : snap.docs[0].id;
+}
+
 // Get all products for a user
 async function getProducts(userId) {
   try {
-    const products = getStoredProducts();
-    const userProducts = Object.values(products).filter(p => p.user_id === userId);
-
-    // Sort by created_at descending
-    userProducts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-    return { success: true, products: userProducts };
+    const shopId = await getShopIdForOwner(userId);
+    if (!shopId) return { success: true, products: [] };
+    const snap = await firebase.firestore().collection('products').where('shopId', '==', shopId).get();
+    const products = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    products.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    return { success: true, products };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -228,29 +155,24 @@ async function getProducts(userId) {
 // Get products by store slug (for public storefront)
 async function getProductsBySlug(storeSlug) {
   try {
-    const normalizedStoreSlug = generateSlug(storeSlug);
-    // Find user by normalized slug
-    const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
-    const user = Object.values(users).find(u => generateSlug(u.store_slug || '') === normalizedStoreSlug);
+    const slug = generateSlug(storeSlug);
+    const shopSnap = await firebase.firestore().collection('shops').where('slug', '==', slug).limit(1).get();
+    if (shopSnap.empty) return { success: false, error: 'Store not found' };
 
-    if (!user) {
-      return { success: false, error: 'Store not found' };
-    }
+    const shopDoc = shopSnap.docs[0];
+    const shop = shopDoc.data();
+    const productSnap = await firebase.firestore().collection('products').where('shopId', '==', shopDoc.id).get();
+    const products = productSnap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(product => product.stock > 0);
+    products.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
 
-    const userId = user.uid;
-    const storeInfo = {
-      store_name: user.store_name,
-      whatsapp_number: user.whatsapp_number
+    return {
+      success: true,
+      storeInfo: { store_name: shop.shopName, whatsapp_number: shop.whatsappNumber || '' },
+      products,
+      userId: shop.ownerId
     };
-
-    // Get products
-    const products = getStoredProducts();
-    const storeProducts = Object.values(products).filter(p => p.user_id === userId && p.stock > 0);
-
-    // Sort by created_at descending
-    storeProducts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-    return { success: true, storeInfo, products: storeProducts, userId };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -259,15 +181,11 @@ async function getProductsBySlug(storeSlug) {
 // Delete a product
 async function deleteProduct(productId, mediaPath) {
   try {
-    const products = getStoredProducts();
-    delete products[productId];
-    saveProducts(products);
-
-    // Mock media deletion
-    if (mediaPath) {
-      console.log('Mock: Would delete media file:', mediaPath);
-    }
-
+    const ref = firebase.firestore().collection('products').doc(productId);
+    const snap = await ref.get();
+    if (!snap.exists) return { success: false, error: 'Product not found' };
+    await deleteProductImages(snap.data().media_paths || (mediaPath ? [mediaPath] : []));
+    await ref.delete();
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
@@ -277,23 +195,15 @@ async function deleteProduct(productId, mediaPath) {
 // Update product stock (used in transactions)
 async function updateProductStock(productId, quantityChange) {
   try {
-    const products = getStoredProducts();
-    const product = products[productId];
-
-    if (!product) {
-      return { success: false, error: 'Product not found' };
-    }
-
-    const currentStock = product.stock;
-    const newStock = currentStock + quantityChange;
-
-    if (newStock < 0) {
-      return { success: false, error: 'Insufficient stock' };
-    }
-
-    product.stock = newStock;
-    saveProducts(products);
-
+    const ref = firebase.firestore().collection('products').doc(productId);
+    await firebase.firestore().runTransaction(async transaction => {
+      const snap = await transaction.get(ref);
+      if (!snap.exists) throw new Error('Product not found');
+      const stock = snap.data().stock;
+      const newStock = stock + quantityChange;
+      if (newStock < 0) throw new Error('Insufficient stock');
+      transaction.update(ref, { stock: newStock });
+    });
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
