@@ -155,11 +155,6 @@
   </div>
 
   <!-- App Scripts -->
-  <script src="js/firebase.js"></script>
-  <script src="js/cart.js"></script>
-  <script src="js/store.js"></script>
-  <script src="js/products.js"></script>
-  <script src="js/orders.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -167,6 +162,11 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-check-compat.js"></script>
+  <script src="js/firebase.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/products.js"></script>
+  <script src="js/orders.js"></script>
 
   <script>
     let cartItems = [];
@@ -277,11 +277,10 @@
         customerOrdersLink.classList.remove('hidden');
         customerOrdersLink.classList.add('flex');
 
-        const ownerId = cartItems[0]?.user_id;
-        const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
-        const owner = Object.values(users).find(user => user.uid === ownerId);
+        const shopSnap = await firebase.firestore().collection('shops').where('slug', '==', storeSlug).limit(1).get();
+        const shop = shopSnap.empty ? null : shopSnap.docs[0].data();
 
-        if (owner?.whatsapp_number) {
+        if (shop?.whatsappNumber) {
           const orderForMessage = {
             ...result.order,
             customer_name: customerData.name,
@@ -291,7 +290,7 @@
             address: customerData.address,
             notes: customerData.notes
           };
-          const whatsappUrl = getWhatsAppOrderUrl(owner.whatsapp_number, orderForMessage, owner.store_name);
+          const whatsappUrl = getWhatsAppOrderUrl(shop.whatsappNumber, orderForMessage, shop.shopName);
 
           if (whatsappUrl) {
             const whatsappButton = document.getElementById('send-order-whatsapp');

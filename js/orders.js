@@ -142,15 +142,8 @@ async function getOrders(userId) {
 // Update order status
 async function updateOrderStatus(orderId, status) {
   try {
-    const updates = {
-      status,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    if (status === 'processing') updates.delivery_stage = 'confirmed';
-    if (status === 'shipped') updates.delivery_stage = 'out_for_delivery';
-    if (status === 'completed') updates.delivery_stage = 'delivered';
-    if (status === 'cancelled') updates.delivery_stage = 'cancelled';
-    await firebase.firestore().collection('orders').doc(orderId).update(updates);
+    const callable = firebase.functions().httpsCallable('updateOrder');
+    await callable({ orderId, status });
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
@@ -159,9 +152,12 @@ async function updateOrderStatus(orderId, status) {
 
 async function updateCustomerOrder(orderId, updates) {
   try {
-    await firebase.firestore().collection('orders').doc(orderId).update({
-      ...updates,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    const callable = firebase.functions().httpsCallable('updateOrder');
+    await callable({
+      orderId,
+      status: updates.status || '',
+      deliveryStage: updates.delivery_stage || '',
+      paymentStatus: updates.payment_status || ''
     });
     return { success: true };
   } catch (error) {

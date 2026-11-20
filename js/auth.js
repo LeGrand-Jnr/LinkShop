@@ -2,7 +2,8 @@
 // AUTHENTICATION MODULE — FIREBASE
 // ============================================
 
-const USERS_KEY = 'linkshop_users';
+// Remove plain-text credentials left by the previous localStorage implementation.
+const LEGACY_USERS_KEY = 'linkshop_users';
 const LEGACY_USER_KEY = 'linkshop_current_user';
 
 function firebaseAuthError(error) {
@@ -31,7 +32,7 @@ async function signup(email, password) {
     }, { merge: true });
 
     localStorage.removeItem(LEGACY_USER_KEY);
-    localStorage.removeItem(USERS_KEY);
+    localStorage.removeItem(LEGACY_USERS_KEY);
     return { success: true, user: { uid: user.uid, email: user.email } };
   } catch (error) {
     return { success: false, error: firebaseAuthError(error) };
@@ -43,7 +44,7 @@ async function login(email, password) {
     const credential = await firebase.auth().signInWithEmailAndPassword(email, password);
     const user = credential.user;
     localStorage.removeItem(LEGACY_USER_KEY);
-    localStorage.removeItem(USERS_KEY);
+    localStorage.removeItem(LEGACY_USERS_KEY);
     return { success: true, user: { uid: user.uid, email: user.email } };
   } catch (error) {
     return { success: false, error: firebaseAuthError(error) };
@@ -144,5 +145,6 @@ async function updateStoreInfo(userId, updates) {
 async function logout() {
   await firebase.auth().signOut();
   localStorage.removeItem(LEGACY_USER_KEY);
+  localStorage.removeItem(LEGACY_USERS_KEY);
   window.location.href = 'index.html';
 }

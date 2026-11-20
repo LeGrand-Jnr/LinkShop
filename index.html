@@ -211,9 +211,6 @@
   </div>
 
   <!-- App Scripts -->
-  <script src="js/firebase.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/cart.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -221,6 +218,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-check-compat.js"></script>
+  <script src="js/firebase.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/cart.js"></script>
 
   <script>
     let pendingUserId = null;
@@ -262,9 +262,6 @@
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
 
-      console.log('Email:', email);
-      console.log('Password length:', password.length);
-
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner"></span><span>Logging in...</span>';
 
@@ -305,9 +302,6 @@
       try {
         const email = document.getElementById('signup-email').value.trim();
         const password = document.getElementById('signup-password').value;
-
-        console.log('Signup email:', email);
-        console.log('Signup password length:', password.length);
 
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner"></span><span>Creating account...</span>';
@@ -380,28 +374,6 @@
         btn.innerHTML = '<span>Create Store</span>';
       }
     }
-
-    // Test function for debugging
-    window.testSignup = async function(email, password) {
-      console.log('Testing signup with:', email, password);
-      const result = await signup(email, password);
-      console.log('Signup result:', result);
-      return result;
-    };
-
-    window.testLogin = async function(email, password) {
-      console.log('Testing login with:', email, password);
-      const result = await login(email, password);
-      console.log('Login result:', result);
-      return result;
-    };
-
-    window.checkUsers = function() {
-      const users = localStorage.getItem('linkshop_users');
-      console.log('Raw users data:', users);
-      console.log('Parsed users:', users ? JSON.parse(users) : {});
-      return users ? JSON.parse(users) : {};
-    };
   </script>
 </body>
 </html>

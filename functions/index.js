@@ -103,46 +103,71 @@ exports.createOrder = onCall({ enforceAppCheck: true, cors: true }, async (reque
 });
 
 exports.getCustomerOrders = onCall({ enforceAppCheck: true, cors: true }, async (request) => {
-  const customerPhone = String((request.data && request.data.customerPhone) || '').replace(/[^0-9]/g, '').slice(0, 30);
-  const shopId = String((request.data && request.data.shopId) || '').trim().slice(0, 128);
+  const data = request.data || {};
+  const customerPhone = cleanText(data.customerPhone, 30).replace(/[^0-9]/g, '');
+  const shopId = cleanText(data.shopId, 128);
 
   if (customerPhone.length < 8) {
-    throw new HttpsError('invalid-argument', 'Enter a valid phone number.');
+    throw new HttpsError('invalid-argument', 'A valid phone number is required.');
   }
 
-  try {
-    let query = db.collection('orders').where('customerPhone', '==', customerPhone);
-    if (shopId) query = query.where('shopId', '==', shopId);
-    const snapshot = await query.limit(100).get();
+  let query = db.collection('orders').where('customerPhone', '==', customerPhone);
+  if (shopId) query = query.where('shopId', '==', shopId);
 
-    const orders = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        reference: 'LS-' + doc.id.slice(-8).toUpperCase(),
-        shopId: data.shopId,
-        store_slug: data.shopId,
-        customerName: data.customerName,
-        customer_name: data.customerName,
-        customerPhone: data.customerPhone,
-        phone: data.customerPhone,
-        address: data.address || '',
-        notes: data.notes || '',
-        payment_method: data.payment_method || 'Pay on delivery',
-        payment_status: data.payment_status || 'pending',
-        payment_reference: data.payment_reference || '',
-        total: data.total || 0,
-        status: data.status || 'pending',
-        delivery_stage: data.delivery_stage || 'order_received',
-        created_at: data.createdAt && data.createdAt.toDate ? data.createdAt.toDate().toISOString() : '',
-        items: data.items || []
-      };
-    });
+  const snapshot = await query.get();
+  const orders = snapshot.docs.map(doc => {
+    const order = doc.data();
+    return {
+      id: doc.id,
+      ...order,
+      customer_name: order.customerName || '',
+      phone: order.customerPhone || '',
+      created_at: order.createdAt?.toDate ? order.createdAt.toDate().toISOString() : ''
+    };
+  });
 
-    orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    return { orders };
-  } catch (error) {
-    console.error('getCustomerOrders failed', error);
-    throw new HttpsError('internal', 'Could not load customer orders.');
+  orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  return { orders };
+});
+
+exports.updateOrder = onCall({ enforceAppCheck: true, cors: true }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to update orders.');
+
+  const data = request.data || {};
+  const orderId = cleanText(data.orderId, 128);
+  const status = cleanText(data.status, 30);
+  const deliveryStage = cleanText(data.deliveryStage, 30);
+  const paymentStatus = cleanText(data.paymentStatus, 30);
+
+  if (!orderId) throw new HttpsError('invalid-argument', 'Order ID is required.');
+
+  const orderRef = db.collection('orders').doc(orderId);
+  const orderSnap = await orderRef.get();
+  if (!orderSnap.exists) throw new HttpsError('not-found', 'Order not found.');
+
+  const order = orderSnap.data();
+  const shopSnap = await db.collection('shops').doc(order.shopId).get();
+  if (!shopSnap.exists || shopSnap.data().ownerId !== request.auth.uid) {
+    throw new HttpsError('permission-denied', 'You do not own this shop.');
   }
+
+  const updates = { updatedAt: FieldValue.serverTimestamp() };
+  if (status) {
+    if (!['pending', 'processing', 'shipped', 'completed', 'cancelled'].includes(status)) {
+      throw new HttpsError('invalid-argument', 'Invalid order status.');
+    }
+    updates.status = status;
+  }
+  if (deliveryStage) {
+    const validStages = ['order_received', 'confirmed', 'out_for_delivery', 'delivered', 'cancelled'];
+    if (!validStages.includes(deliveryStage)) throw new HttpsError('invalid-argument', 'Invalid delivery stage.');
+    updates.delivery_stage = deliveryStage;
+  }
+  if (paymentStatus) {
+    if (!['pending', 'paid'].includes(paymentStatus)) throw new HttpsError('invalid-argument', 'Invalid payment status.');
+    updates.payment_status = paymentStatus;
+  }
+
+  await orderRef.update(updates);
+  return { success: true };
 });

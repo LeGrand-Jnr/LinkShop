@@ -12,7 +12,7 @@ A modern, responsive e-commerce platform built with vanilla JavaScript, HTML, an
 - **Customer Portal** - Phone-number account with order history and delivery progress
 - **Analytics Dashboard** - Revenue and inventory insights
 - **Responsive Design** - Works perfectly on all devices
-- **Firebase Ready** - Authentication, Firestore, Storage, Rules and Hosting templates prepared
+- **Firebase Ready** - Authentication, Firestore, Storage, Rules and Hosting configured
 
 ## 📁 Project Structure
 
