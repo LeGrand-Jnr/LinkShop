@@ -33,12 +33,25 @@ function generateOrderMessage(order, storeName) {
   message += `📋 Order ID: ${order.id}\n`;
   message += `👤 Customer: ${order.customer_name}\n`;
   message += `📞 Phone: ${order.phone}\n`;
+  if (order.email) message += `✉️ Email: ${order.email}\n`;
   message += `🚚 Delivery: ${order.delivery_type}\n`;
   if (order.address) message += `📍 Address: ${order.address}\n`;
+  if (order.notes) message += `📝 Notes: ${order.notes}\n`;
   message += `\n📦 *Items:*\n`;
   order.items.forEach(item => {
     message += `  • ${item.name} x${item.quantity} - ${formatCurrency(item.price * item.quantity)}\n`;
   });
   message += `\n💰 *Total: ${formatCurrency(order.total)}*`;
   return message;
+}
+
+// Build WhatsApp link for a complete customer order
+function getWhatsAppOrderUrl(phone, order, storeName) {
+  if (!phone) return '';
+
+  const cleanPhone = String(phone).replace(/[^0-9]/g, '');
+  if (!cleanPhone) return '';
+
+  const message = generateOrderMessage(order, storeName);
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 }

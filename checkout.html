@@ -113,12 +113,18 @@
           <i data-lucide="check-circle" class="w-8 h-8 text-green-600"></i>
         </div>
         <h2 class="text-xl font-bold text-slate-800 mb-2">Order Placed Successfully!</h2>
-        <p class="text-sm text-slate-500 mb-6">Your order has been received and the seller will contact you soon.</p>
+        <p class="text-sm text-slate-500 mb-6">Your order has been received. When WhatsApp opens, send the prepared message to notify the store owner.</p>
 
         <div class="bg-slate-50 rounded-xl p-4 mb-6">
           <div class="text-sm text-slate-600 mb-1">Order ID</div>
           <div class="font-mono font-bold text-slate-800" id="success-order-id">#ORDER123</div>
         </div>
+
+        <a id="send-order-whatsapp" href="#" target="_blank" rel="noopener"
+          class="hidden w-full mb-3 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-xl transition-all items-center justify-center gap-2">
+          <i data-lucide="message-circle" class="w-4 h-4"></i>
+          Send Order via WhatsApp
+        </a>
 
         <button onclick="goBackToStore()"
           class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 rounded-xl transition-all">
@@ -132,6 +138,7 @@
   <script src="js/firebase.js"></script>
   <script src="js/cart.js"></script>
   <script src="js/orders.js"></script>
+  <script src="js/store.js"></script>
 
   <script>
     let cartItems = [];
@@ -191,6 +198,14 @@
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner"></span><span>Placing order...</span>';
 
+      const customerData = {
+        name: document.getElementById('customer-name').value.trim(),
+        phone: document.getElementById('customer-phone').value.trim(),
+        email: document.getElementById('customer-email').value.trim(),
+        address: document.getElementById('customer-address').value.trim(),
+        notes: document.getElementById('order-notes').value.trim()
+      };
+
       const orderData = {
         user_id: cartItems[0]?.user_id, // Get user_id from first cart item
         customer_name: customerData.name,
@@ -207,9 +222,36 @@
         // Clear cart
         clearCart();
 
-        // Show success modal
         document.getElementById('success-order-id').textContent = result.orderId;
         document.getElementById('order-success-modal').classList.remove('hidden');
+
+        const ownerId = cartItems[0]?.user_id;
+        const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
+        const owner = Object.values(users).find(user => user.uid === ownerId);
+
+        if (owner?.whatsapp_number) {
+          const orderForMessage = {
+            ...result.order,
+            customer_name: customerData.name,
+            phone: customerData.phone,
+            email: customerData.email,
+            delivery_type: 'delivery',
+            address: customerData.address,
+            notes: customerData.notes
+          };
+          const whatsappUrl = getWhatsAppOrderUrl(owner.whatsapp_number, orderForMessage, owner.store_name);
+
+          if (whatsappUrl) {
+            const whatsappButton = document.getElementById('send-order-whatsapp');
+            whatsappButton.href = whatsappUrl;
+            whatsappButton.classList.remove('hidden');
+            whatsappButton.classList.add('flex');
+
+            window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+          }
+        } else {
+          showToast('Order placed, but the store owner has not added a WhatsApp number.', 'warning');
+        }
       } else {
         showToast(result.error, 'error');
         btn.disabled = false;

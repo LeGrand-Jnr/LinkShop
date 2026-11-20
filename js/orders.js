@@ -63,7 +63,7 @@ async function createOrder(orderData, cartItems) {
     // Clear cart
     clearCart();
 
-    return { success: true, orderId, total };
+    return { success: true, orderId, order, total };
   } catch (error) {
     return { success: false, error: error.message };
   }
