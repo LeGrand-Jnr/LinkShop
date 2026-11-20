@@ -144,6 +144,11 @@ function generateSlug(name) {
     .substring(0, 40);
 }
 
+// Helper: Normalize slug for store
+function normalizeStoreSlug(slug) {
+  return generateSlug(String(slug || ''));
+}
+
 // Helper: Check if video file
 function isVideoUrl(url) {
   return /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url);

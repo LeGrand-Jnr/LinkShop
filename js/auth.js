@@ -131,6 +131,20 @@ async function login(email, password) {
   }
 }
 
+// Normalize store slug
+function normalizeStoreSlug(slug) {
+  // Convert to string, trim, and lowercase
+  slug = String(slug).trim().toLowerCase();
+
+  // Replace spaces and invalid characters with dashes
+  slug = slug.replace(/[^a-z0-9]+/g, '-');
+
+  // Remove leading/trailing dashes
+  slug = slug.replace(/^-+|-+$/g, '');
+
+  return slug;
+}
+
 // Save store info after signup
 async function saveStoreInfo(userId, storeName, storeSlug, whatsappNumber) {
   try {
@@ -141,8 +155,16 @@ async function saveStoreInfo(userId, storeName, storeSlug, whatsappNumber) {
       return { success: false, error: 'User not found' };
     }
 
+    // Normalize store slug
+    storeName = String(storeName || '').trim();
+    storeSlug = normalizeStoreSlug(storeSlug);
+
+    if (!storeName || !storeSlug) {
+      return { success: false, error: 'Store name and URL are required.' };
+    }
+
     // Check if slug is unique
-    const existingUser = Object.values(users).find(u => u.store_slug === storeSlug && u.uid !== userId);
+    const existingUser = Object.values(users).find(u => normalizeStoreSlug(u.store_slug) === storeSlug && u.uid !== userId);
     if (existingUser) {
       return { success: false, error: 'This store URL is already taken. Please choose another.' };
     }
@@ -198,6 +220,8 @@ async function updateStoreInfo(userId, updates) {
 
     // Check slug uniqueness if updating
     if (updates.store_slug) {
+      updates.store_slug = normalizeStoreSlug(updates.store_slug);
+
       const existingUser = Object.values(users).find(u => u.store_slug === updates.store_slug && u.uid !== userId);
       if (existingUser) {
         return { success: false, error: 'This store URL is already taken.' };

@@ -1043,7 +1043,7 @@
     async function handleUpdateStore(e) {
       e.preventDefault();
       const storeName = document.getElementById('edit-store-name').value.trim();
-      const storeSlug = document.getElementById('edit-store-slug').value.trim().toLowerCase();
+      const storeSlug = normalizeStoreSlug(document.getElementById('edit-store-slug').value);
       const whatsapp = document.getElementById('edit-whatsapp').value.trim();
 
       const result = await updateStoreInfo(currentUser.uid, {

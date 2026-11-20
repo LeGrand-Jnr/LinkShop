@@ -9,7 +9,12 @@ async function getStoreBySlug(slug) {
 
 // Generate store URL
 function getStoreUrl(slug) {
-  return `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}store.html?shop=${slug}`;
+  const normalizedSlug = generateSlug(slug);
+  const url = new URL('store.html', window.location.href);
+  url.search = '';
+  url.hash = '';
+  url.searchParams.set('shop', normalizedSlug);
+  return url.href;
 }
 
 // Generate a QR code locally with the bundled QRCode library

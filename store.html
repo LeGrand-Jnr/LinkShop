@@ -123,7 +123,7 @@
     // Initialize store page
     async function initStore() {
       const params = new URLSearchParams(window.location.search);
-      storeSlug = params.get('shop');
+      storeSlug = generateSlug(params.get('shop') || '');
 
       if (!storeSlug) {
         showError('No store specified. Please check the link and try again.');
@@ -133,7 +133,7 @@
       const result = await getProductsBySlug(storeSlug);
 
       if (!result.success) {
-        showError(result.error);
+        showError(`Store not found in this browser. Store data is local to the browser/profile where it was created. Slug: ${storeSlug}`);
         return;
       }
 
@@ -170,7 +170,7 @@
 
         const mediaEl = firstImage
           ? (isVideoUrl(firstImage)
-            ? `<div class="media-preview aspect-square cursor-pointer" onclick="openImageViewer('${firstImage}')"><video src="${firstImage}" class="w-full h-full" muted loop onmouseover="this.play()" onmouseout="this.pause()"></video></div>`
+            ? `<div class="media-preview aspect-square cursor-pointer" onclick="openImageViewer('${firstImage}')"><video src="${firstImage}" class="w-full h-full" muted loop onmouseover="this.play()" onmouseout="this.pause()"></div>`
             : `<div class="media-preview aspect-square cursor-pointer" onclick="openImageViewer('${firstImage}')"><img src="${firstImage}" alt="${p.name}" class="w-full h-full object-cover" loading="lazy"></div>`)
           : `<div class="aspect-square bg-slate-100 flex items-center justify-center rounded-xl"><i data-lucide="image" class="w-10 h-10 text-slate-200"></i></div>`;
 

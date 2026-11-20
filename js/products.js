@@ -174,9 +174,10 @@ async function getProducts(userId) {
 // Get products by store slug (for public storefront)
 async function getProductsBySlug(storeSlug) {
   try {
-    // Find user by slug
+    const normalizedStoreSlug = generateSlug(storeSlug);
+    // Find user by normalized slug
     const users = JSON.parse(localStorage.getItem('linkshop_users') || '{}');
-    const user = Object.values(users).find(u => u.store_slug === storeSlug);
+    const user = Object.values(users).find(u => generateSlug(u.store_slug || '') === normalizedStoreSlug);
 
     if (!user) {
       return { success: false, error: 'Store not found' };
