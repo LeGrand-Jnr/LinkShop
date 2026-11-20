@@ -12,15 +12,14 @@ function getStoreUrl(slug) {
   return `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}store.html?shop=${slug}`;
 }
 
-// Generate QR code URL
+// Generate a QR code locally with the bundled QRCode library
 function getQrCodeUrl(url) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+  return url;
 }
 
-// Generate WhatsApp message link
+// Generate WhatsApp message text for local clipboard use
 function getWhatsAppLink(phone, message) {
-  const cleanPhone = phone.replace(/[^0-9+]/g, '');
-  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+  return message;
 }
 
 // Generate order summary message for WhatsApp
